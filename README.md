@@ -1,53 +1,55 @@
 # OpenChat
 
-Asistente de chat de escritorio para Linux y Windows, con interfaz PySide6. Usa Laguna a través de OpenRouter y prueba Ollama local si la petición en la nube falla.
+![Logo de OpenChat](app/logo.svg)
 
-## Funciones
-- Interfaz de chat de escritorio.
-- Configuración de clave OpenRouter desde la app.
-- Clave guardada fuera del repositorio en ~/.config/openchat/openrouter.key.
-- Modelo en la nube: poolside/laguna-s-2.1:free.
-- Respaldo local opcional: Ollama con qwen2.5:1.5b.
-- Instaladores para Linux y Windows que instalan dependencias Python en un entorno virtual.
-- Desinstalador de la aplicación.
-- No necesita Releases.
+Asistente de chat de escritorio para Linux y Windows. Usa Laguna a través de OpenRouter y tiene una IA local de respaldo con Ollama.
 
-## Linux
-Ejecuta en una terminal:
+## Incluye
+- Interfaz de chat de escritorio con icono propio.
+- Configuración de clave OpenRouter desde la app; la clave se guarda solo en el equipo.
+- Modelo en la nube: \`poolside/laguna-s-2.1:free\`.
+- IA local: Ollama con \`qwen2.5:1.5b\`.
+- Instaladores para Linux y Windows que preparan las dependencias de Python, Ollama y el modelo local.
+- Desinstalador de OpenChat. Ollama y su modelo se conservan al desinstalar la app.
+- No necesita GitHub Releases.
+
+## Linux (CachyOS, Arch, Debian, Ubuntu, Fedora, openSUSE)
+
+Ejecuta:
 
     curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | sh
 
-El instalador comprueba Python 3, Git y el soporte de entornos virtuales. Si faltan, intenta instalarlos mediante pacman, apt, dnf o zypper. Crea ~/OpenChat, instala los paquetes Python en un entorno virtual aislado y añade OpenChat al menú de aplicaciones.
+El instalador comprueba Python y Git, configura un entorno virtual, instala las dependencias de la interfaz, instala Ollama si falta, inicia el servicio e intenta descargar \`qwen2.5:1.5b\`. Necesitas conexión a Internet y espacio libre para el modelo; la instalación puede tardar.
 
-Para desinstalar desde terminal:
+Para desinstalar solo OpenChat:
 
     ~/.local/bin/openchat-uninstall
 
-También aparece como Desinstalar OpenChat en el menú de aplicaciones. Por defecto conserva la clave y configuración; responde n para borrarlas. No desinstala Python, Git ni Ollama.
+Puedes conservar o borrar la clave y configuración. No elimina Ollama ni el modelo.
 
 ## Windows
-En PowerShell:
+
+Abre PowerShell y ejecuta:
 
     irm https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.ps1 | iex
 
-Se necesitan Python 3 y Git. Si faltan, el instalador indica dónde conseguirlos. Crea un entorno virtual e instala las dependencias.
+El instalador usa winget para instalar Python, Git y Ollama si faltan; configura el entorno virtual e intenta descargar \`qwen2.5:1.5b\`.
 
-Para desinstalar, ejecuta Desinstalar OpenChat.cmd desde el Escritorio. Puedes conservar o borrar la clave y configuración.
+Para desinstalar OpenChat, ejecuta \`Desinstalar OpenChat.cmd\` desde el Escritorio. Ollama y el modelo local se conservan.
 
 ## Primera ejecución
-Crea una clave en https://openrouter.ai/settings/keys y pégala en el diálogo de configuración de OpenChat. Para respaldo local instala Ollama desde https://ollama.com y ejecuta:
 
-    ollama pull qwen2.5:1.5b
+1. Abre OpenChat desde el menú de aplicaciones (Linux) o \`OpenChat.cmd\` (Windows).
+2. Para usar Laguna, crea una clave en https://openrouter.ai/settings/keys y añádela desde el botón de configuración.
+3. Si OpenRouter no está configurado o falla, OpenChat intenta responder con la IA local Ollama.
 
-Ollama es opcional y no se instala ni se elimina automáticamente.
+La clave API no debe publicarse ni guardarse en el repositorio. Las conversaciones enviadas a OpenRouter salen hacia ese servicio; el modo Ollama usa el servicio local.
 
 ## Ejecutar desde el código
 
     python -m pip install -r requirements.txt
     python -m app.main
 
-## Privacidad
-No publiques tu clave API ni la guardes en el repositorio. Cuando usa OpenRouter, los mensajes se envían a ese servicio; el modo Ollama envía peticiones a localhost.
-
 ## Licencia
+
 MIT
