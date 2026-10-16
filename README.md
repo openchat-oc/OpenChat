@@ -52,6 +52,19 @@ La clave API no debe publicarse ni guardarse en el repositorio. Las conversacion
     python -m pip install -r requirements.txt
     python -m app.main
 
+
+## Pruebas automatizadas
+
+Desde la raíz del repositorio, con Python instalado, ejecuta:
+
+    python -m unittest discover -s tests -v
+
+Las pruebas añadidas cubren la validación de nombres de archivo, la escritura UTF-8, la protección frente a sobrescrituras accidentales y la sustitución explícita de archivos existentes. No sustituyen las pruebas de interfaz gráfica ni las pruebas reales contra OpenRouter u Ollama.
+
+## Guardado seguro de archivos
+
+Los archivos generados se guardan en la carpeta que elijas. OpenChat rechaza nombres que contengan rutas o nombres especiales, comprueba el contenido escrito y pide confirmación antes de sobrescribir archivos existentes. La ejecución de los archivos generados no es automática.
+
 ## Licencia
 
 MIT
