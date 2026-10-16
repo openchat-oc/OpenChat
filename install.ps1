@@ -80,3 +80,5 @@ Write-Host "OpenChat, dependencias, Ollama y modelo local instalados." -Foregrou
 Write-Host "Abrir: $Desktop\OpenChat.cmd"
 Write-Host "Desinstalar: $Desktop\Desinstalar OpenChat.cmd"
 Write-Host "El desinstalador no elimina Ollama ni el modelo descargado."
+Write-Host "Abriendo OpenChat..." -ForegroundColor Cyan
+Start-Process -FilePath $Launcher
