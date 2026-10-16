@@ -8,26 +8,38 @@ Asistente de chat de escritorio para Linux y Windows, con interfaz PySide6. Usa 
 - Clave guardada fuera del repositorio en ~/.config/openchat/openrouter.key.
 - Modelo en la nube: poolside/laguna-s-2.1:free.
 - Respaldo local opcional: Ollama con qwen2.5:1.5b.
-- Instaladores para Linux y Windows; no necesita Releases.
+- Instaladores para Linux y Windows que instalan dependencias Python en un entorno virtual.
+- Desinstalador de la aplicación.
+- No necesita Releases.
 
 ## Linux
 Ejecuta en una terminal:
 
     curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | sh
 
-El instalador usa gestores comunes (pacman, apt, dnf, zypper), instala dependencias del sistema si faltan, crea ~/OpenChat y añade OpenChat al menú de aplicaciones.
+El instalador comprueba Python 3, Git y el soporte de entornos virtuales. Si faltan, intenta instalarlos mediante pacman, apt, dnf o zypper. Crea ~/OpenChat, instala los paquetes Python en un entorno virtual aislado y añade OpenChat al menú de aplicaciones.
+
+Para desinstalar desde terminal:
+
+    ~/.local/bin/openchat-uninstall
+
+También aparece como Desinstalar OpenChat en el menú de aplicaciones. Por defecto conserva la clave y configuración; responde n para borrarlas. No desinstala Python, Git ni Ollama.
 
 ## Windows
 En PowerShell:
 
     irm https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.ps1 | iex
 
-Se necesitan Python 3 y Git. El instalador indica dónde conseguirlos si faltan.
+Se necesitan Python 3 y Git. Si faltan, el instalador indica dónde conseguirlos. Crea un entorno virtual e instala las dependencias.
+
+Para desinstalar, ejecuta Desinstalar OpenChat.cmd desde el Escritorio. Puedes conservar o borrar la clave y configuración.
 
 ## Primera ejecución
 Crea una clave en https://openrouter.ai/settings/keys y pégala en el diálogo de configuración de OpenChat. Para respaldo local instala Ollama desde https://ollama.com y ejecuta:
 
     ollama pull qwen2.5:1.5b
+
+Ollama es opcional y no se instala ni se elimina automáticamente.
 
 ## Ejecutar desde el código
 
