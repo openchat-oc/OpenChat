@@ -75,7 +75,7 @@ class MainWindow(QMainWindow):
         self.scroll=QScrollArea(); self.scroll.setWidgetResizable(True); self.scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         self.chat=QWidget(); self.chatbox=QVBoxLayout(self.chat); self.chatbox.setContentsMargins(24,24,24,24); self.chatbox.setSpacing(14); self.chatbox.addStretch(); self.scroll.setWidget(self.chat); outer.addWidget(self.scroll,1)
         bottom=QWidget(); bottom.setObjectName("bottom"); b=QVBoxLayout(bottom); b.setContentsMargins(22,12,22,18)
-        self.status=QLabel("Listo para ayudarte" if self.key else "Configura tu clave con ⚙ o instala Ollama para usar IA local"); self.status.setStyleSheet("color:#aaaabb;font-size:12px"); b.addWidget(self.status)
+        self.status=QLabel("Listo: Laguna + IA local disponibles" if self.key else "IA local lista. Para activar Laguna, añade tu clave de OpenRouter en ⚙"); self.status.setStyleSheet("color:#aaaabb;font-size:12px"); b.addWidget(self.status)
         line=QHBoxLayout(); self.input=QTextEdit(); self.input.setPlaceholderText("Escribe tu mensaje… (Ctrl+Intro para enviar)"); self.input.setFixedHeight(76); self.input.setAcceptRichText(False); line.addWidget(self.input,1)
         self.send=QPushButton("Enviar  ↗"); self.send.setMinimumWidth(110); self.send.clicked.connect(self.send_message); line.addWidget(self.send); b.addLayout(line); outer.addWidget(bottom)
         self.setStyleSheet("""
@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
         QTextEdit{background:#292a32;border:1px solid #41424d;border-radius:14px;padding:12px}
         QTextEdit:focus{border:1px solid #8a83f6} QPushButton{font-weight:600}
         """)
-        self.add_message("assistant","¡Hola! Soy OpenChat. ¿En qué te ayudo hoy?")
+        self.add_message("assistant","¡Hola! Soy OpenChat. ¿En qué te ayudo hoy?\\n\\nLa IA local funciona sin clave. Para usar también Laguna, añade tu clave de OpenRouter desde ⚙.")
     def add_message(self,role,text):
         bubble=QWidget(); lay=QVBoxLayout(bubble); lay.setContentsMargins(15,11,15,11)
         name=QLabel("Tú" if role=="user" else "OpenChat"); name.setStyleSheet("font-weight:700;color:#91c9b6" if role=="user" else "font-weight:700;color:#aaa4ff"); lay.addWidget(name)
