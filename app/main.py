@@ -263,13 +263,13 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         for name,content in matches:
             name=name.strip()
             if is_safe_filename(name):
-                self.generated_files[name]=content.strip()+"\\n"
+                self.generated_files[name]=content.strip()+"\n"
             else:
                 rejected.append(name or "(nombre vacío)")
         self.files_btn.setEnabled(bool(self.generated_files))
-        shown=re.sub(r"""<openchat-file\\s+name=["']([^"']+)["']\\s*>(.*?)</openchat-file>""",lambda m:"📄 Archivo preparado: "+(m.group(1).strip() if is_safe_filename(m.group(1).strip()) else "nombre de archivo no permitido"),text,flags=re.S|re.I)
+        shown=re.sub(r"""<openchat-file\s+name=["']([^"']+)["']\s*>(.*?)</openchat-file>""",lambda m:"📄 Archivo preparado: "+(m.group(1).strip() if is_safe_filename(m.group(1).strip()) else "nombre de archivo no permitido"),text,flags=re.S|re.I)
         if rejected:
-            shown += "\\n\\nSe han descartado nombres de archivo no seguros: " + ", ".join(rejected)
+            shown += "\n\nSe han descartado nombres de archivo no seguros: " + ", ".join(rejected)
         shown=shown.replace("\\\\n","\\n")
         self.add_message("assistant",shown); self.messages.append({"role":"assistant","content":text})
         if self.generated_files: self.status.setText(str(len(self.generated_files))+" archivo(s) listo(s) para guardar · "+source)
