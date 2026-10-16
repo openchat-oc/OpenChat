@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys, subprocess, re
 from pathlib import Path
+from .safe_files import is_safe_filename, write_text_safely
 import requests
 from PySide6.QtCore import QObject, Signal, QThread, Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent
 from PySide6.QtGui import QIcon, QFont
@@ -206,20 +207,38 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
             return
         folder=QFileDialog.getExistingDirectory(self,"¿Dónde guardamos los archivos?",str(Path.home()/"Documents"))
         if not folder: return
-        root=Path(folder); saved=[]; errors=[]
+        root=Path(folder)
+        saved=[]; errors=[]; skipped=[]
+        conflicts=[name for name in self.generated_files if (root/name).exists()]
+        overwrite=False
+        if conflicts:
+            answer=QMessageBox.question(
+                self,"Confirmar sobrescritura",
+                "Ya existen estos archivos y se reemplazarán solo si lo autorizas:\\n\\n"+
+                "\\n".join(conflicts)+"\\n\\n¿Quieres sobrescribirlos?",
+                QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No)
+            overwrite=answer==QMessageBox.StandardButton.Yes
         for name,content in self.generated_files.items():
-            safe=Path(name.replace("\\\\","/")).name
-            if not safe or safe in (".",".."): continue
             try:
-                (root/safe).write_text(content,encoding="utf-8")
-                saved.append(safe)
-            except OSError as e: errors.append(safe+": "+str(e))
+                path=write_text_safely(root,name,content,overwrite=overwrite)
+                if path is None:
+                    skipped.append(name)
+                else:
+                    saved.append(name)
+            except (OSError,ValueError) as e:
+                errors.append(name+": "+str(e))
         if saved:
             self.status.setText("Guardados "+str(len(saved))+" archivo(s) en "+str(root))
-            message="Se han guardado estos archivos:\n\n"+"\n".join(saved)+"\n\nCarpeta: "+str(root)
-            if errors: message+="\n\nErrores:\n"+"\n".join(errors)
+            message="Se han guardado estos archivos:\\n\\n"+"\\n".join(saved)+"\\n\\nCarpeta: "+str(root)
+            if skipped: message+="\\n\\nNo se sobrescribieron:\\n"+"\\n".join(skipped)
+            if errors: message+="\\n\\nErrores:\\n"+"\\n".join(errors)
             QMessageBox.information(self,"Archivos creados",message)
-        elif errors: QMessageBox.warning(self,"No se pudieron guardar", "\\n".join(errors))
+        elif errors or skipped:
+            message="No se guardó ningún archivo."
+            if skipped: message+="\\n\\nNo se sobrescribieron:\\n"+"\\n".join(skipped)
+            if errors: message+="\\n\\nErrores:\\n"+"\\n".join(errors)
+            QMessageBox.warning(self,"No se pudieron guardar",message)
     def save_answer(self):
         if not self.last_answer.strip(): QMessageBox.information(self,"Aún no hay respuesta","Primero pide a OpenChat el contenido que quieres guardar."); return
         path,_=QFileDialog.getSaveFileName(self,"Guardar archivo",str(Path.home()/"respuesta-openchat.txt"),"Texto (*.txt);;Python (*.py);;JavaScript (*.js);;HTML (*.html);;CSS (*.css);;Markdown (*.md);;JSON (*.json);;Todos los archivos (*)")
@@ -240,11 +259,17 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         self.hide_typing(); self.last_answer=text
         matches=re.findall(r"""<openchat-file\s+name=["']([^"']+)["']\s*>(.*?)</openchat-file>""",text,re.S|re.I)
         self.generated_files={}
+        rejected=[]
         for name,content in matches:
-            name=Path(name.replace("\\\\","/")).name
-            if name and name not in (".",".."): self.generated_files[name]=content.strip()+"\n"
+            name=name.strip()
+            if is_safe_filename(name):
+                self.generated_files[name]=content.strip()+"\\n"
+            else:
+                rejected.append(name or "(nombre vacío)")
         self.files_btn.setEnabled(bool(self.generated_files))
-        shown=re.sub(r"""<openchat-file\s+name=["']([^"']+)["']\s*>(.*?)</openchat-file>""",lambda m:"📄 Archivo preparado: "+Path(m.group(1).replace("\\\\","/")).name,text,flags=re.S|re.I)
+        shown=re.sub(r"""<openchat-file\\s+name=["']([^"']+)["']\\s*>(.*?)</openchat-file>""",lambda m:"📄 Archivo preparado: "+(m.group(1).strip() if is_safe_filename(m.group(1).strip()) else "nombre de archivo no permitido"),text,flags=re.S|re.I)
+        if rejected:
+            shown += "\\n\\nSe han descartado nombres de archivo no seguros: " + ", ".join(rejected)
         shown=shown.replace("\\\\n","\\n")
         self.add_message("assistant",shown); self.messages.append({"role":"assistant","content":text})
         if self.generated_files: self.status.setText(str(len(self.generated_files))+" archivo(s) listo(s) para guardar · "+source)
