@@ -77,14 +77,13 @@ if (-not (Test-OllamaApi)) {
 Write-Host "Descargando el modelo local qwen2.5:1.5b (alrededor de 1 GB o más)..." -ForegroundColor Cyan
 & $OllamaExe pull qwen2.5:1.5b
 if ($LASTEXITCODE -ne 0) { throw "No se pudo descargar qwen2.5:1.5b. Ejecuta: ollama pull qwen2.5:1.5b" }
-Write-Host "OpenChat, dependencias, Ollama y modelo local instalados." -ForegroundColor Green
-Write-Host "Abrir: $Desktop\OpenChat.cmd"
-Write-Host "Desinstalar: $Desktop\Desinstalar OpenChat.cmd"
-Write-Host "El desinstalador no elimina Ollama ni el modelo descargado."
-Write-Host "Abriendo OpenChat..." -ForegroundColor Cyan
-Write-Host "OpenChat instalado. Ollama y el modelo local se omiten por defecto para ahorrar espacio." -ForegroundColor Green
-    Write-Host "Para instalar también Ollama, define OPENCHAT_INSTALL_OLLAMA=1 y vuelve a ejecutar el instalador."
+Write-Host "OpenChat, Ollama y el modelo local están preparados." -ForegroundColor Green
+    Write-Host "Abrir: $Desktop\\OpenChat.cmd"
+    Write-Host "Desinstalar: $Desktop\\Desinstalar OpenChat.cmd"
+    Write-Host "El desinstalador no elimina Ollama ni el modelo descargado."
     Start-Process -FilePath $Launcher
 } else {
-Start-Process -FilePath $Launcher
+    Write-Host "OpenChat instalado. Ollama y el modelo local se omiten por defecto para ahorrar espacio." -ForegroundColor Green
+    Write-Host "Para incluir Ollama, define OPENCHAT_INSTALL_OLLAMA=1 y vuelve a ejecutar el instalador."
+    Start-Process -FilePath $Launcher
 }
