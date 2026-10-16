@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -eu
+printf "%s\n" "OpenChat installer for Linux: https://github.com/openchat-oc/OpenChat/blob/main/install.sh"
+exec sh -c "$(curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh)"
