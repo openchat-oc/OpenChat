@@ -28,13 +28,13 @@ function Test-OllamaApi {
 }
 Ensure-Command "python" "Python.Python.3.12"
 Ensure-Command "git" "Git.Git"
-if (-not (Get-Ollama)) {
+if ($env:OPENCHAT_INSTALL_OLLAMA -eq "1" -and -not (Get-Ollama)) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { throw "No encuentro winget para instalar Ollama." }
     Write-Host "Instalando Ollama (IA local)..." -ForegroundColor Cyan
     winget install --id Ollama.Ollama --exact --accept-package-agreements --accept-source-agreements
 }
 $OllamaExe = Get-Ollama
-if (-not $OllamaExe) { throw "Ollama no aparece instalado. Instálalo desde https://ollama.com/download y repite." }
+if ($env:OPENCHAT_INSTALL_OLLAMA -eq "1" -and -not $OllamaExe) { throw "Ollama no aparece instalado. Instálalo desde https://ollama.com/download y repite." }
 if (Test-Path (Join-Path $AppDir ".git")) { git -C $AppDir pull --ff-only }
 elseif (Test-Path $AppDir) { throw "$AppDir existe y no es un repositorio OpenChat. Muévelo o renómbralo." }
 else { git clone "https://github.com/openchat-oc/OpenChat.git" $AppDir }
@@ -63,6 +63,7 @@ Set-Content -Encoding UTF8 $Uninstaller $uninstallText
 $UninstallShortcut = Join-Path $Desktop "Desinstalar OpenChat.cmd"
 $shortcutText = '@echo off' + [Environment]::NewLine + 'powershell -NoProfile -ExecutionPolicy Bypass -File "' + $Uninstaller + '"'
 Set-Content -Encoding ASCII $UninstallShortcut $shortcutText
+if ($env:OPENCHAT_INSTALL_OLLAMA -eq "1") {
 if (-not (Test-OllamaApi)) {
     Write-Host "Iniciando el servicio local de Ollama..." -ForegroundColor Cyan
     Start-Process -FilePath $OllamaExe -ArgumentList "serve" -WindowStyle Hidden
@@ -81,4 +82,9 @@ Write-Host "Abrir: $Desktop\OpenChat.cmd"
 Write-Host "Desinstalar: $Desktop\Desinstalar OpenChat.cmd"
 Write-Host "El desinstalador no elimina Ollama ni el modelo descargado."
 Write-Host "Abriendo OpenChat..." -ForegroundColor Cyan
+Write-Host "OpenChat instalado. Ollama y el modelo local se omiten por defecto para ahorrar espacio." -ForegroundColor Green
+    Write-Host "Para instalar también Ollama, define OPENCHAT_INSTALL_OLLAMA=1 y vuelve a ejecutar el instalador."
+    Start-Process -FilePath $Launcher
+} else {
 Start-Process -FilePath $Launcher
+}
