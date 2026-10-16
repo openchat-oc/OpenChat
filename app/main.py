@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel, QLine
 CONFIG = Path.home()/".config"/"openchat"
 KEYFILE = CONFIG/"openrouter.key"
 SETTINGS = CONFIG/"settings.json"
+HISTORY = CONFIG/"conversation.json"
 LEGACY = Path.home()/".config"/"oi-auto"/"openrouter.key"
 MODEL = "poolside/laguna-s-2.1:free"
 LOCAL = "qwen2.5:1.5b"
@@ -53,6 +54,26 @@ def save_settings(settings):
     except OSError: pass
     temporary.replace(SETTINGS)
     try: SETTINGS.chmod(0o600)
+    except OSError: pass
+
+def load_history():
+    try:
+        data=json.loads(HISTORY.read_text(encoding="utf-8"))
+        if isinstance(data,list):
+            return [item for item in data[-80:] if isinstance(item,dict) and item.get("role") in ("user","assistant") and isinstance(item.get("content"),str)]
+    except (OSError,ValueError,TypeError):
+        pass
+    return []
+
+def save_history(messages):
+    CONFIG.mkdir(parents=True,exist_ok=True)
+    history=[item for item in messages if item.get("role") in ("user","assistant") and isinstance(item.get("content"),str)][-80:]
+    temp=HISTORY.with_suffix(".tmp")
+    temp.write_text(json.dumps(history,ensure_ascii=False,indent=2),encoding="utf-8")
+    try: temp.chmod(0o600)
+    except OSError: pass
+    temp.replace(HISTORY)
+    try: HISTORY.chmod(0o600)
     except OSError: pass
 
 def local_status():
@@ -180,6 +201,7 @@ Cuando el usuario solicite crear uno o varios archivos, genera el contenido comp
 contenido completo del archivo
 </openchat-file>
 Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspensivos. Puedes explicar brevemente antes o después de los bloques. No uses este formato para código que solo sea un ejemplo si el usuario no pide un archivo."""}]
+        self.messages.extend(load_history())
         root=QWidget(); root.setObjectName("root"); self.setCentralWidget(root); outer=QVBoxLayout(root); outer.setContentsMargins(0,0,0,0); outer.setSpacing(0)
         header=QWidget(); header.setObjectName("header"); row=QHBoxLayout(header); row.setContentsMargins(24,16,24,16); row.setSpacing(12)
         brand_icon=QLabel("✦"); brand_icon.setFixedSize(44,44); brand_icon.setAlignment(Qt.AlignmentFlag.AlignCenter); brand_icon.setStyleSheet("font-size:27px;color:white;background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #9d83f6,stop:1 #25c7e8);border-radius:15px"); row.addWidget(brand_icon)
@@ -207,7 +229,11 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         QTextEdit{background:#242630;border:1px solid #3b3d4b;border-radius:15px;padding:13px;selection-background-color:#6556b4}
         QTextEdit:focus{border:1px solid #9383ff} QScrollArea{border:0}
         """)
-        self.add_message("assistant","¡Hola! Soy OpenChat ✨. Chispa, mi mascota, te acompañará mientras trabajamos.\n\nPuedes escribirme directamente sin pulsar el cuadro de texto. Pulsa Intro para enviar y Mayús+Intro para saltar de línea. Si me pides crear archivos, prepararé el contenido para que puedas guardarlo. ¿Qué hacemos hoy?")
+        if len(self.messages)==1:
+            self.add_message("assistant","¡Hola! Soy OpenChat ✨. Chispa, mi mascota, te acompañará mientras trabajamos.\\n\\nPuedes escribirme directamente sin pulsar el cuadro de texto. Pulsa Intro para enviar y Mayús+Intro para saltar de línea. Si me pides crear archivos, prepararé el contenido para que puedas guardarlo. ¿Qué hacemos hoy?")
+        else:
+            for item in self.messages[1:]:
+                self.add_message(item["role"],item["content"])
         effect=QGraphicsOpacityEffect(self); self.setGraphicsEffect(effect); effect.setOpacity(0.0)
         self.fade=QPropertyAnimation(effect,b"opacity",self); self.fade.setDuration(600); self.fade.setStartValue(0.0); self.fade.setEndValue(1.0); self.fade.setEasingCurve(QEasingCurve.Type.OutCubic); self.fade.start()
         QApplication.instance().installEventFilter(self)
@@ -307,6 +333,7 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         text=self.input.toPlainText().strip()
         if not text or self.thread is not None: return
         self.input.clear(); self.add_message("user",text); self.messages.append({"role":"user","content":text})
+        save_history(self.messages)
         self.send.setEnabled(False); self.status.setText("OpenChat está pensando"); self.show_typing()
         self.thread=QThread(self); self.worker=Worker(self.messages.copy(),self.key,self.mode,self.selected_model); self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run); self.worker.status.connect(self.status.setText); self.worker.done.connect(self.answer); self.worker.done.connect(self.thread.quit); self.thread.finished.connect(self.cleanup); self.thread.start()
@@ -327,6 +354,7 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
             shown += "\n\nSe han descartado nombres de archivo no seguros: " + ", ".join(rejected)
         shown=shown.replace("\\n", "\n")
         self.add_message("assistant",shown); self.messages.append({"role":"assistant","content":text})
+        save_history(self.messages)
         if self.generated_files: self.status.setText(str(len(self.generated_files))+" archivo(s) listo(s) para guardar · "+source)
         else: self.status.setText("Respuesta recibida · "+source)
         self.model.setText("●  "+source); self.send.setEnabled(True)
