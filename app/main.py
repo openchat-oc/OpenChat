@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-import sys, subprocess
+import sys, subprocess, re
 from pathlib import Path
 import requests
-from PySide6.QtCore import QObject, Signal, QThread, Qt, QTimer
+from PySide6.QtCore import QObject, Signal, QThread, Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent
 from PySide6.QtGui import QIcon, QFont
 from PySide6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMessageBox, QPushButton, QScrollArea, QTextEdit, QVBoxLayout,
-    QWidget, QFileDialog, QProgressBar)
+    QWidget, QFileDialog, QProgressBar, QGraphicsOpacityEffect)
 
 CONFIG = Path.home()/".config"/"openchat"
 KEYFILE = CONFIG/"openrouter.key"
@@ -37,12 +37,23 @@ def validate_key(key):
     r.raise_for_status()
     return True, "Clave verificada."
 
+class ChatInput(QTextEdit):
+    send_requested = Signal()
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not (event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
+            self.send_requested.emit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
 class SetupDialog(QDialog):
     def __init__(self):
         super().__init__(); self.setWindowTitle("Primer inicio · OpenChat"); self.setMinimumWidth(480); self.setModal(True)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowCloseButtonHint)
         box=QVBoxLayout(self); box.setContentsMargins(30,28,30,28); box.setSpacing(14)
-        logo=QLabel("✦"); logo.setAlignment(Qt.AlignmentFlag.AlignCenter); logo.setStyleSheet("font-size:38px;color:#b8a8ff;background:#29233e;border-radius:22px;padding:12px"); box.addWidget(logo)
+        logo=QLabel("◕ᴗ◕"); logo.setObjectName("setupMascot"); logo.setAlignment(Qt.AlignmentFlag.AlignCenter); logo.setStyleSheet("font-size:38px;color:#b8a8ff;background:#29233e;border-radius:22px;padding:12px"); box.addWidget(logo)
+        self.mascot=logo; self.mascot_phase=False; self.mascot_timer=QTimer(self); self.mascot_timer.timeout.connect(self.animate_mascot); self.mascot_timer.start(700)
+        helper=QLabel("¡Hola! Soy Chispa, la mascota de OpenChat ✨\\nTe acompaño paso a paso. Primero conectaremos tu IA y después podrás empezar a crear."); helper.setWordWrap(True); helper.setAlignment(Qt.AlignmentFlag.AlignCenter); helper.setStyleSheet("color:#d6d0f0;font-size:13px;background:#242333;border:1px solid #39354f;border-radius:14px;padding:12px"); box.addWidget(helper)
         title=QLabel("Vamos a preparar OpenChat"); title.setAlignment(Qt.AlignmentFlag.AlignCenter); title.setStyleSheet("font-size:25px;font-weight:800"); box.addWidget(title)
         subtitle=QLabel("Antes de entrar, conecta tu cuenta de OpenRouter. Es obligatorio para terminar la configuración."); subtitle.setWordWrap(True); subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter); subtitle.setStyleSheet("color:#aeb0c3;font-size:13px"); box.addWidget(subtitle)
         box.addSpacing(8); box.addWidget(QLabel("Tu clave API de OpenRouter"))
@@ -51,6 +62,19 @@ class SetupDialog(QDialog):
         self.status=QLabel("La clave se guarda solo en este equipo, con permisos privados."); self.status.setWordWrap(True); self.status.setStyleSheet("color:#aeb0c3;font-size:12px"); box.addWidget(self.status)
         self.go=QPushButton("Verificar clave y empezar  →"); self.go.setMinimumHeight(44); self.go.clicked.connect(self.verify); box.addWidget(self.go)
         self.key=""
+        self.setStyleSheet("""
+        QDialog{background:#171820;color:#eeeeF8} QLabel{color:#eeeef8}
+        QLineEdit{background:#242630;border:1px solid #48445f;border-radius:12px;padding:12px;color:#fff}
+        QLineEdit:focus{border:1px solid #a092ff}
+        QPushButton{background:#8875ee;color:white;border:0;border-radius:12px;padding:12px;font-weight:700}
+        QPushButton:hover{background:#a092ff} QPushButton:disabled{background:#514a75;color:#d0c9ed}
+        """)
+        effect=QGraphicsOpacityEffect(self); self.setGraphicsEffect(effect)
+        self.fade=QPropertyAnimation(effect,b"opacity",self); self.fade.setDuration(420); self.fade.setStartValue(0.25); self.fade.setEndValue(1.0); self.fade.setEasingCurve(QEasingCurve.Type.OutCubic); self.fade.start()
+    def animate_mascot(self):
+        self.mascot_phase=not self.mascot_phase
+        self.mascot.setText("◕ᴗ◕" if self.mascot_phase else "◕‿◕")
+        self.mascot.setStyleSheet("font-size:38px;color:#d5caff;background:#29233e;border:1px solid "+("#8d7cf1" if self.mascot_phase else "#25c7e8")+";border-radius:24px;padding:12px")
     def reject(self): pass
     def verify(self):
         key=self.entry.text().strip()
@@ -96,8 +120,13 @@ class Worker(QObject):
 class MainWindow(QMainWindow):
     def __init__(self,key):
         super().__init__(); self.key=key; self.setWindowTitle("OpenChat"); self.setWindowIcon(QIcon(str(Path(__file__).with_name("logo.svg")))); self.resize(1000,740); self.setMinimumSize(650,520)
-        self.thread=None; self.worker=None; self.last_answer=""; self.typing_dots=0; self.typing_row=None
-        self.messages=[{"role":"system","content":"Eres OpenChat, un asistente útil, claro y preciso. Responde en el idioma del usuario. Si el usuario pide crear un archivo, devuelve el contenido completo y especifica el nombre y tipo de archivo."}]
+        self.thread=None; self.worker=None; self.last_answer=""; self.generated_files={}; self.typing_dots=0; self.typing_row=None; self.intro_phase=False
+        self.messages=[{"role":"system","content":"""Eres OpenChat, la IA. Chispa es únicamente tu mascota, no la IA. Responde en el idioma del usuario y sé útil, claro y preciso.
+Cuando el usuario solicite crear uno o varios archivos, genera el contenido completo y envuelve CADA archivo en este formato exacto:
+<openchat-file name="ejemplo.py">
+contenido completo del archivo
+</openchat-file>
+Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspensivos. Puedes explicar brevemente antes o después de los bloques. No uses este formato para código que solo sea un ejemplo si el usuario no pide un archivo."""}]
         root=QWidget(); root.setObjectName("root"); self.setCentralWidget(root); outer=QVBoxLayout(root); outer.setContentsMargins(0,0,0,0); outer.setSpacing(0)
         header=QWidget(); header.setObjectName("header"); row=QHBoxLayout(header); row.setContentsMargins(24,16,24,16); row.setSpacing(12)
         brand_icon=QLabel("✦"); brand_icon.setFixedSize(44,44); brand_icon.setAlignment(Qt.AlignmentFlag.AlignCenter); brand_icon.setStyleSheet("font-size:27px;color:white;background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #9d83f6,stop:1 #25c7e8);border-radius:15px"); row.addWidget(brand_icon)
@@ -112,9 +141,9 @@ class MainWindow(QMainWindow):
         self.chat=QWidget(); self.chat.setObjectName("chat"); self.chatbox=QVBoxLayout(self.chat); self.chatbox.setContentsMargins(28,26,28,26); self.chatbox.setSpacing(18); self.chatbox.addStretch(); self.scroll.setWidget(self.chat); outer.addWidget(self.scroll,1)
         bottom=QWidget(); bottom.setObjectName("bottom"); b=QVBoxLayout(bottom); b.setContentsMargins(24,12,24,20); b.setSpacing(10)
         self.status=QLabel("Listo para empezar · clave verificada"); self.status.setStyleSheet("color:#9b9db2;font-size:12px"); b.addWidget(self.status)
-        line=QHBoxLayout(); line.setSpacing(10); self.input=QTextEdit(); self.input.setPlaceholderText("Escribe aquí…  (Ctrl + Intro para enviar)"); self.input.setFixedHeight(78); self.input.setAcceptRichText(False); line.addWidget(self.input,1)
+        line=QHBoxLayout(); line.setSpacing(10); self.input=ChatInput(); self.input.setPlaceholderText("Escribe lo que necesitas…  ·  Intro para enviar · Mayús+Intro para nueva línea"); self.input.setFixedHeight(82); self.input.setAcceptRichText(False); self.input.send_requested.connect(self.send_message); self.input.setTabChangesFocus(False); line.addWidget(self.input,1)
         self.send=QPushButton("Enviar  ↗"); self.send.setObjectName("send"); self.send.setMinimumWidth(120); self.send.setMinimumHeight(48); self.send.clicked.connect(self.send_message); line.addWidget(self.send); b.addLayout(line)
-        actions=QHBoxLayout(); self.savefile=QPushButton("↓  Guardar respuesta como archivo"); self.savefile.clicked.connect(self.save_answer); actions.addWidget(self.savefile); actions.addStretch(); tip=QLabel("Tus conversaciones se procesan con la IA elegida"); tip.setStyleSheet("color:#77798d;font-size:11px"); actions.addWidget(tip); b.addLayout(actions); outer.addWidget(bottom)
+        actions=QHBoxLayout(); self.savefile=QPushButton("↓  Guardar respuesta"); self.savefile.clicked.connect(self.save_answer); actions.addWidget(self.savefile); self.files_btn=QPushButton("▣  Guardar archivos creados"); self.files_btn.clicked.connect(self.save_generated_files); self.files_btn.setEnabled(False); actions.addWidget(self.files_btn); actions.addStretch(); tip=QLabel("Tus conversaciones se procesan con la IA elegida"); tip.setStyleSheet("color:#77798d;font-size:11px"); actions.addWidget(tip); b.addLayout(actions); outer.addWidget(bottom)
         self.setStyleSheet("""
         QWidget{font-family:'Noto Sans','Inter',sans-serif;font-size:14px;color:#ececf5}
         QMainWindow,#root,#chat{background:#15161c} #header,#bottom{background:#1d1e26;border:0}
@@ -125,7 +154,10 @@ class MainWindow(QMainWindow):
         QTextEdit{background:#242630;border:1px solid #3b3d4b;border-radius:15px;padding:13px;selection-background-color:#6556b4}
         QTextEdit:focus{border:1px solid #9383ff} QScrollArea{border:0}
         """)
-        self.add_message("assistant","¡Hola! Soy OpenChat ✨. Chispa, mi mascota, te acompañará mientras trabajamos.\n\nYa está configurada tu clave de OpenRouter. ¿Qué hacemos hoy?")
+        self.add_message("assistant","¡Hola! Soy OpenChat ✨. Chispa, mi mascota, te acompañará mientras trabajamos.\\n\\nPuedes escribirme directamente sin pulsar el cuadro de texto. Pulsa Intro para enviar y Mayús+Intro para saltar de línea. Si me pides crear archivos, prepararé el contenido para que puedas guardarlo. ¿Qué hacemos hoy?")
+        effect=QGraphicsOpacityEffect(self); self.setGraphicsEffect(effect); effect.setOpacity(0.0)
+        self.fade=QPropertyAnimation(effect,b"opacity",self); self.fade.setDuration(600); self.fade.setStartValue(0.0); self.fade.setEndValue(1.0); self.fade.setEasingCurve(QEasingCurve.Type.OutCubic); self.fade.start()
+        QApplication.instance().installEventFilter(self)
     def add_message(self,role,text):
         bubble=QWidget(); bubble.setMaximumWidth(760); lay=QVBoxLayout(bubble); lay.setContentsMargins(17,14,17,14); lay.setSpacing(7)
         name=QLabel("TÚ" if role=="user" else "✦  OPENCHAT"); name.setStyleSheet("font-size:10px;font-weight:800;letter-spacing:1px;color:#8fd9c0" if role=="user" else "font-size:10px;font-weight:800;letter-spacing:1px;color:#aaa0ff"); lay.addWidget(name)
@@ -157,6 +189,37 @@ class MainWindow(QMainWindow):
             else: self.status.setText("Hay una actualización disponible."); QMessageBox.information(self,"Actualización disponible","Cierra OpenChat y ejecuta:\n\ncd ~/OpenChat && git pull --ff-only\n\nDespués vuelve a abrirlo.")
         except Exception as e: self.status.setText("No se pudo comprobar la actualización."); QMessageBox.warning(self,"Actualizaciones",str(e))
         finally: self.update_btn.setEnabled(True)
+    def eventFilter(self, watched, event):
+        if event.type()==QEvent.Type.KeyPress and self.isActiveWindow():
+            focus=QApplication.focusWidget()
+            if focus not in (self.input, self.input.viewport()):
+                if not (event.modifiers() & (Qt.KeyboardModifier.ControlModifier|Qt.KeyboardModifier.AltModifier|Qt.KeyboardModifier.MetaModifier)):
+                    ch=event.text()
+                    if ch and ch.isprintable() and len(ch)==1:
+                        self.input.setFocus()
+                        self.input.insertPlainText(ch)
+                        return True
+        return super().eventFilter(watched,event)
+    def save_generated_files(self):
+        if not self.generated_files:
+            QMessageBox.information(self,"No hay archivos","Pide a OpenChat que cree un archivo y después podrás guardarlo aquí.")
+            return
+        folder=QFileDialog.getExistingDirectory(self,"¿Dónde guardamos los archivos?",str(Path.home()/"Documents"))
+        if not folder: return
+        root=Path(folder); saved=[]; errors=[]
+        for name,content in self.generated_files.items():
+            safe=Path(name.replace("\\\\","/")).name
+            if not safe or safe in (".",".."): continue
+            try:
+                (root/safe).write_text(content,encoding="utf-8")
+                saved.append(safe)
+            except OSError as e: errors.append(safe+": "+str(e))
+        if saved:
+            self.status.setText("Guardados "+str(len(saved))+" archivo(s) en "+str(root))
+            message="Se han guardado estos archivos:\\n\\n"+"\\n".join(saved)+"\\n\\nCarpeta: "+str(root)
+            if errors: message+="\\n\\nErrores:\\n"+"\\n".join(errors)
+            QMessageBox.information(self,"Archivos creados",message)
+        elif errors: QMessageBox.warning(self,"No se pudieron guardar", "\\n".join(errors))
     def save_answer(self):
         if not self.last_answer.strip(): QMessageBox.information(self,"Aún no hay respuesta","Primero pide a OpenChat el contenido que quieres guardar."); return
         path,_=QFileDialog.getSaveFileName(self,"Guardar archivo",str(Path.home()/"respuesta-openchat.txt"),"Texto (*.txt);;Python (*.py);;JavaScript (*.js);;HTML (*.html);;CSS (*.css);;Markdown (*.md);;JSON (*.json);;Todos los archivos (*)")
@@ -174,8 +237,19 @@ class MainWindow(QMainWindow):
         self.thread=QThread(self); self.worker=Worker(self.messages.copy(),self.key); self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run); self.worker.status.connect(self.status.setText); self.worker.done.connect(self.answer); self.worker.done.connect(self.thread.quit); self.thread.finished.connect(self.cleanup); self.thread.start()
     def answer(self,text,source):
-        self.hide_typing(); self.last_answer=text; self.add_message("assistant",text); self.messages.append({"role":"assistant","content":text})
-        self.status.setText("Respuesta recibida · "+source); self.model.setText("●  "+source); self.send.setEnabled(True)
+        self.hide_typing(); self.last_answer=text
+        matches=re.findall(r'<openchat-file\\s+name=["\\']([^"\\']+)["\\']\\s*>(.*?)</openchat-file>',text,re.S|re.I)
+        self.generated_files={}
+        for name,content in matches:
+            name=Path(name.replace("\\\\","/")).name
+            if name and name not in (".",".."): self.generated_files[name]=content.strip()+"\\n"
+        self.files_btn.setEnabled(bool(self.generated_files))
+        shown=re.sub(r'<openchat-file\\s+name=["\\']([^"\\']+)["\\']\\s*>(.*?)</openchat-file>',lambda m:"📄 Archivo preparado: "+Path(m.group(1).replace("\\\\","/")).name,text,flags=re.S|re.I)
+        shown=shown.replace("\\\\n","\\n")
+        self.add_message("assistant",shown); self.messages.append({"role":"assistant","content":text})
+        if self.generated_files: self.status.setText(str(len(self.generated_files))+" archivo(s) listo(s) para guardar · "+source)
+        else: self.status.setText("Respuesta recibida · "+source)
+        self.model.setText("●  "+source); self.send.setEnabled(True)
     def cleanup(self):
         self.hide_typing()
         if self.worker: self.worker.deleteLater()
