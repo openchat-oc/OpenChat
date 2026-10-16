@@ -66,15 +66,19 @@ def load_history():
     return []
 
 def save_history(messages):
-    CONFIG.mkdir(parents=True,exist_ok=True)
-    history=[item for item in messages if item.get("role") in ("user","assistant") and isinstance(item.get("content"),str)][-80:]
-    temp=HISTORY.with_suffix(".tmp")
-    temp.write_text(json.dumps(history,ensure_ascii=False,indent=2),encoding="utf-8")
-    try: temp.chmod(0o600)
-    except OSError: pass
-    temp.replace(HISTORY)
-    try: HISTORY.chmod(0o600)
-    except OSError: pass
+    try:
+        CONFIG.mkdir(parents=True,exist_ok=True)
+        history=[item for item in messages if item.get("role") in ("user","assistant") and isinstance(item.get("content"),str)][-80:]
+        temp=HISTORY.with_suffix(".tmp")
+        temp.write_text(json.dumps(history,ensure_ascii=False,indent=2),encoding="utf-8")
+        try: temp.chmod(0o600)
+        except OSError: pass
+        temp.replace(HISTORY)
+        try: HISTORY.chmod(0o600)
+        except OSError: pass
+    except OSError:
+        # A history-write failure must not prevent the current conversation from working.
+        pass
 
 def local_status():
     response=requests.get("http://127.0.0.1:11434/api/tags",timeout=(2,4))
