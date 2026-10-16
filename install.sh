@@ -108,7 +108,7 @@ if [ "${OPENCHAT_INSTALL_OLLAMA:-0}" = "1" ]; then
   ollama pull "$MODEL" || fail "Ollama funciona, pero no se pudo descargar $MODEL. Repite: ollama pull $MODEL"
 else
   say "Instalación nube preparada. Ollama y el modelo local se omiten para ahorrar espacio."
-  say "Para instalar también la IA local, ejecuta: OPENCHAT_INSTALL_OLLAMA=1 sh install.sh"
+  say "Para incluir Ollama, ejecuta de nuevo: curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | env OPENCHAT_INSTALL_OLLAMA=1 sh"
 fi
 say "Instalación de OpenChat completada."
 say "Iniciar: $BIN/openchat"
