@@ -41,7 +41,9 @@ Para desinstalar OpenChat, ejecuta \`Desinstalar OpenChat.cmd\` desde el Escrito
 
 1. Abre OpenChat desde el menú de aplicaciones (Linux) o \`OpenChat.cmd\` (Windows).
 2. Para usar Laguna, crea una clave en https://openrouter.ai/settings/keys y añádela desde el botón de configuración.
-3. Si OpenRouter no está configurado o falla, OpenChat intenta responder con la IA local Ollama.
+3. La IA local Ollama queda preparada durante la instalación y puede usarse sin clave.
+4. Para activar también Laguna en la nube, crea una clave de OpenRouter y añádela desde ⚙. La clave no se puede generar automáticamente y puede estar sujeta a límites o condiciones del proveedor.
+5. Al terminar la instalación, OpenChat se abre automáticamente.
 
 La clave API no debe publicarse ni guardarse en el repositorio. Las conversaciones enviadas a OpenRouter salen hacia ese servicio; el modo Ollama usa el servicio local.
 
