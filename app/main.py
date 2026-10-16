@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import requests
 from PySide6.QtCore import QObject, Signal, QThread, Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QScrollArea, QTextEdit, QVBoxLayout, QWidget
 
 CONFIG = Path.home()/".config"/"openchat"
@@ -63,12 +64,12 @@ class Worker(QObject):
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__(); self.setWindowTitle("OpenChat"); self.resize(900,680); self.setMinimumSize(580,440)
+        super().__init__(); self.setWindowTitle("OpenChat"); self.setWindowIcon(QIcon(str(Path(__file__).with_name("logo.svg")))); self.resize(900,680); self.setMinimumSize(580,440)
         self.key=read_key(); self.thread=None; self.worker=None
         self.messages=[{"role":"system","content":"Eres OpenChat, un asistente útil, claro y preciso. Responde en el idioma del usuario."}]
         root=QWidget(); root.setObjectName("root"); self.setCentralWidget(root); outer=QVBoxLayout(root); outer.setContentsMargins(0,0,0,0); outer.setSpacing(0)
         header=QWidget(); header.setObjectName("header"); row=QHBoxLayout(header); row.setContentsMargins(22,15,22,15)
-        brand=QLabel("✦  OpenChat"); brand.setStyleSheet("font-size:21px;font-weight:700"); row.addWidget(brand); row.addStretch()
+        brand_icon=QLabel(); brand_icon.setPixmap(QIcon(str(Path(__file__).with_name("logo.svg"))).pixmap(34,34)); row.addWidget(brand_icon); brand=QLabel("OpenChat"); brand.setStyleSheet("font-size:21px;font-weight:700;letter-spacing:0.3px"); row.addWidget(brand); row.addStretch()
         self.model=QLabel("Laguna · respaldo local"); self.model.setStyleSheet("color:#aaaabb;font-size:12px"); row.addWidget(self.model)
         gear=QPushButton("⚙"); gear.clicked.connect(self.configure); row.addWidget(gear); outer.addWidget(header)
         self.scroll=QScrollArea(); self.scroll.setWidgetResizable(True); self.scroll.setFrameShape(QScrollArea.Shape.NoFrame)
