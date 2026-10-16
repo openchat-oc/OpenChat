@@ -1,54 +1,41 @@
 # OpenChat
 
-OpenChat is a lightweight desktop AI chat assistant for Linux and Windows. It uses Laguna through OpenRouter by default and can fall back to a local Ollama model when the cloud request fails.
+Asistente de chat de escritorio para Linux y Windows, con interfaz PySide6. Usa Laguna a través de OpenRouter y prueba Ollama local si la petición en la nube falla.
 
-## Features
+## Funciones
+- Interfaz de chat de escritorio.
+- Configuración de clave OpenRouter desde la app.
+- Clave guardada fuera del repositorio en ~/.config/openchat/openrouter.key.
+- Modelo en la nube: poolside/laguna-s-2.1:free.
+- Respaldo local opcional: Ollama con qwen2.5:1.5b.
+- Instaladores para Linux y Windows; no necesita Releases.
 
-- Clean desktop chat interface
-- First-run OpenRouter API key setup
-- API key stored locally, outside this repository
-- OpenRouter model: `poolside/laguna-s-2.1:free`
-- Local fallback through Ollama (default: `qwen2.5:1.5b`)
-- Linux and Windows installers
-- No Releases required
+## Linux
+Ejecuta en una terminal:
 
-## Install
+    curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | sh
 
-### Linux (Bash)
+El instalador usa gestores comunes (pacman, apt, dnf, zypper), instala dependencias del sistema si faltan, crea ~/OpenChat y añade OpenChat al menú de aplicaciones.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install | bash
-```
+## Windows
+En PowerShell:
 
-### Windows (PowerShell)
+    irm https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.ps1 | iex
 
-```powershell
-irm https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.ps1 | iex
-```
+Se necesitan Python 3 y Git. El instalador indica dónde conseguirlos si faltan.
 
-The installer checks for Python and installs the Python dependencies for the application. On first launch, enter an OpenRouter API key from https://openrouter.ai/settings/keys.
+## Primera ejecución
+Crea una clave en https://openrouter.ai/settings/keys y pégala en el diálogo de configuración de OpenChat. Para respaldo local instala Ollama desde https://ollama.com y ejecuta:
 
-## Local fallback
+    ollama pull qwen2.5:1.5b
 
-Install Ollama separately from https://ollama.com/ and pull a small model:
+## Ejecutar desde el código
 
-```bash
-ollama pull qwen2.5:1.5b
-```
+    python -m pip install -r requirements.txt
+    python -m app.main
 
-OpenChat attempts the configured Ollama model if the OpenRouter request fails and Ollama is available.
+## Privacidad
+No publiques tu clave API ni la guardes en el repositorio. Cuando usa OpenRouter, los mensajes se envían a ese servicio; el modo Ollama envía peticiones a localhost.
 
-## Privacy
-
-The OpenRouter key is saved in the user's configuration directory, not in this repository. Do not share the key or commit it to source control.
-
-## Development
-
-```bash
-python -m pip install -r requirements.txt
-python -m app.main
-``
-
-## License
-
+## Licencia
 MIT
