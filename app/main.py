@@ -125,7 +125,7 @@ class MainWindow(QMainWindow):
         QTextEdit{background:#242630;border:1px solid #3b3d4b;border-radius:15px;padding:13px;selection-background-color:#6556b4}
         QTextEdit:focus{border:1px solid #9383ff} QScrollArea{border:0}
         """)
-        self.add_message("assistant","¡Hola! Soy Chispa, tu compañera de OpenChat ✨\n\nYa está configurada tu clave de OpenRouter. ¿Qué hacemos hoy?")
+        self.add_message("assistant","¡Hola! Soy OpenChat ✨. Chispa, mi mascota, te acompañará mientras trabajamos.\n\nYa está configurada tu clave de OpenRouter. ¿Qué hacemos hoy?")
     def add_message(self,role,text):
         bubble=QWidget(); bubble.setMaximumWidth(760); lay=QVBoxLayout(bubble); lay.setContentsMargins(17,14,17,14); lay.setSpacing(7)
         name=QLabel("TÚ" if role=="user" else "✦  OPENCHAT"); name.setStyleSheet("font-size:10px;font-weight:800;letter-spacing:1px;color:#8fd9c0" if role=="user" else "font-size:10px;font-weight:800;letter-spacing:1px;color:#aaa0ff"); lay.addWidget(name)
@@ -137,7 +137,7 @@ class MainWindow(QMainWindow):
         self.chatbox.insertLayout(self.chatbox.count()-1,line); QTimer.singleShot(20,lambda:self.scroll.verticalScrollBar().setValue(self.scroll.verticalScrollBar().maximum()))
     def show_typing(self):
         bubble=QWidget(); lay=QHBoxLayout(bubble); lay.setContentsMargins(16,10,16,10); lay.setSpacing(9)
-        lab=QLabel("Chispa está pensando"); lab.setStyleSheet("color:#aaa0ff;font-weight:650"); self.dots=QLabel("●  ●  ●"); self.dots.setStyleSheet("color:#9383ff;letter-spacing:3px"); lay.addWidget(lab); lay.addWidget(self.dots); lay.addStretch()
+        lab=QLabel("OpenChat está pensando"); lab.setStyleSheet("color:#aaa0ff;font-weight:650"); self.dots=QLabel("●  ●  ●"); self.dots.setStyleSheet("color:#9383ff;letter-spacing:3px"); lay.addWidget(lab); lay.addWidget(self.dots); lay.addStretch()
         self.chatbox.insertWidget(self.chatbox.count()-1,bubble); self.typing_row=bubble
         self.dot_timer=QTimer(self); self.dot_timer.timeout.connect(self.animate_dots); self.dot_timer.start(360)
     def animate_dots(self):
@@ -158,7 +158,7 @@ class MainWindow(QMainWindow):
         except Exception as e: self.status.setText("No se pudo comprobar la actualización."); QMessageBox.warning(self,"Actualizaciones",str(e))
         finally: self.update_btn.setEnabled(True)
     def save_answer(self):
-        if not self.last_answer.strip(): QMessageBox.information(self,"Aún no hay respuesta","Primero pide a Chispa el contenido que quieres guardar."); return
+        if not self.last_answer.strip(): QMessageBox.information(self,"Aún no hay respuesta","Primero pide a OpenChat el contenido que quieres guardar."); return
         path,_=QFileDialog.getSaveFileName(self,"Guardar archivo",str(Path.home()/"respuesta-openchat.txt"),"Texto (*.txt);;Python (*.py);;JavaScript (*.js);;HTML (*.html);;CSS (*.css);;Markdown (*.md);;JSON (*.json);;Todos los archivos (*)")
         if not path: return
         try: Path(path).write_text(self.last_answer,encoding="utf-8"); self.status.setText("Archivo guardado: "+Path(path).name)
@@ -170,7 +170,7 @@ class MainWindow(QMainWindow):
         text=self.input.toPlainText().strip()
         if not text or self.thread is not None: return
         self.input.clear(); self.add_message("user",text); self.messages.append({"role":"user","content":text})
-        self.send.setEnabled(False); self.status.setText("Chispa está pensando"); self.show_typing()
+        self.send.setEnabled(False); self.status.setText("OpenChat está pensando"); self.show_typing()
         self.thread=QThread(self); self.worker=Worker(self.messages.copy(),self.key); self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run); self.worker.status.connect(self.status.setText); self.worker.done.connect(self.answer); self.worker.done.connect(self.thread.quit); self.thread.finished.connect(self.cleanup); self.thread.start()
     def answer(self,text,source):
