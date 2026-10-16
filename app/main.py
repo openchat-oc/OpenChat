@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import subprocess
 from pathlib import Path
 import requests
 from PySide6.QtCore import QObject, Signal, QThread, Qt
@@ -71,6 +72,7 @@ class MainWindow(QMainWindow):
         header=QWidget(); header.setObjectName("header"); row=QHBoxLayout(header); row.setContentsMargins(22,15,22,15)
         brand_icon=QLabel("✦"); brand_icon.setFixedSize(40,40); brand_icon.setAlignment(Qt.AlignmentFlag.AlignCenter); brand_icon.setStyleSheet("font-size:25px;color:#fff;background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #9d83f6,stop:1 #25c7e8);border-radius:13px"); row.addWidget(brand_icon); brand=QLabel("OpenChat"); brand.setStyleSheet("font-size:21px;font-weight:700;letter-spacing:0.3px"); row.addWidget(brand); row.addStretch()
         self.model=QLabel("Laguna + Ollama"); self.model.setStyleSheet("color:#aaaabb;font-size:12px"); row.addWidget(self.model)
+        self.update_btn=QPushButton("Buscar actualizaciones"); self.update_btn.clicked.connect(self.check_updates); row.addWidget(self.update_btn)
         gear=QPushButton("⚙"); gear.clicked.connect(self.configure); row.addWidget(gear); outer.addWidget(header)
         hero=QLabel("🐾  ¡Hola! Soy Chispa, tu compañera de IA. Pídeme ideas, código o que prepare el contenido de un archivo."); hero.setWordWrap(True); hero.setStyleSheet("margin:14px 22px 0 22px;padding:14px 16px;background:#28243e;border:1px solid #49416e;border-radius:15px;color:#dcd7ff;font-size:13px"); outer.addWidget(hero)
         self.scroll=QScrollArea(); self.scroll.setWidgetResizable(True); self.scroll.setFrameShape(QScrollArea.Shape.NoFrame)
@@ -100,6 +102,25 @@ class MainWindow(QMainWindow):
         else: line.addWidget(bubble); line.addStretch()
         self.chatbox.insertLayout(self.chatbox.count()-1,line)
         self.scroll.verticalScrollBar().setValue(self.scroll.verticalScrollBar().maximum())
+    def check_updates(self):
+        self.update_btn.setEnabled(False); self.status.setText("Comprobando actualizaciones de OpenChat…")
+        try:
+            result=subprocess.run(["git","-C",str(Path(__file__).resolve().parents[1]),"ls-remote","origin","refs/heads/main"],capture_output=True,text=True,timeout=8,check=True)
+            remote=result.stdout.split()[0] if result.stdout.split() else ""
+            local=subprocess.run(["git","-C",str(Path(__file__).resolve().parents[1]),"rev-parse","HEAD"],capture_output=True,text=True,timeout=3,check=True).stdout.strip()
+            if not remote:
+                raise RuntimeError("GitHub no devolvió la versión actual.")
+            if remote==local:
+                self.status.setText("OpenChat está actualizado.")
+                QMessageBox.information(self,"OpenChat está actualizado","Ya tienes la versión más reciente de la rama main.")
+            else:
+                self.status.setText("Hay una actualización disponible.")
+                QMessageBox.information(self,"Actualización disponible","Hay cambios en GitHub. Cierra OpenChat y ejecuta en una terminal:\n\ncd ~/OpenChat && git pull --ff-only\n\nDespués vuelve a abrir la aplicación.")
+        except Exception as e:
+            self.status.setText("No se pudo comprobar la actualización.")
+            QMessageBox.warning(self,"No se pudo comprobar", "Comprueba la conexión a Internet y que Git esté instalado.\n\n"+str(e))
+        finally:
+            self.update_btn.setEnabled(True)
     def save_answer(self):
         if not self.last_answer.strip():
             QMessageBox.information(self,"Todavía no hay respuesta","Primero pídele a Chispa que cree el contenido que quieres guardar.")
