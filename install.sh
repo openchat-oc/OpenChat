@@ -85,27 +85,32 @@ Icon=edit-delete
 Terminal=true
 Categories=Utility;
 EOF
-say "Preparando la IA local Ollama…"
-if ! has ollama; then
-  if ! curl -fsSL https://ollama.com/install.sh | sh; then
-    fail "No se pudo instalar Ollama. Revisa la conexión y vuelve a ejecutar este instalador."
+if [ "${OPENCHAT_INSTALL_OLLAMA:-0}" = "1" ]; then
+  say "Preparando la IA local Ollama…"
+  if ! has ollama; then
+    if ! curl -fsSL https://ollama.com/install.sh | sh; then
+      fail "No se pudo instalar Ollama. Revisa la conexión y vuelve a ejecutar este instalador."
+    fi
   fi
+  has ollama || fail "Ollama no quedó instalado correctamente."
+  if has systemctl; then root_run systemctl enable --now ollama >/dev/null 2>&1 || true; fi
+  if ! curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+    say "Iniciando el servicio local de Ollama…"
+    nohup ollama serve >/tmp/openchat-ollama.log 2>&1 &
+    tries=0
+    while [ "$tries" -lt 20 ]; do
+      if curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then break; fi
+      sleep 1; tries=$((tries+1))
+    done
+  fi
+  curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 || fail "Ollama está instalado pero no responde en localhost:11434."
+  say "Descargando el modelo local $MODEL (puede ocupar alrededor de 1 GB o más)…"
+  ollama pull "$MODEL" || fail "Ollama funciona, pero no se pudo descargar $MODEL. Repite: ollama pull $MODEL"
+else
+  say "Instalación nube preparada. Ollama y el modelo local se omiten para ahorrar espacio."
+  say "Para incluir Ollama, ejecuta de nuevo: curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | env OPENCHAT_INSTALL_OLLAMA=1 sh"
 fi
-has ollama || fail "Ollama no quedó instalado correctamente."
-if has systemctl; then root_run systemctl enable --now ollama >/dev/null 2>&1 || true; fi
-if ! curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-  say "Iniciando el servicio local de Ollama…"
-  nohup ollama serve >/tmp/openchat-ollama.log 2>&1 &
-  tries=0
-  while [ "$tries" -lt 20 ]; do
-    if curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then break; fi
-    sleep 1; tries=$((tries+1))
-  done
-fi
-curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 || fail "Ollama está instalado pero no responde en localhost:11434. Reinicia sesión y ejecuta 'ollama serve'."
-say "Descargando el modelo local $MODEL (puede ocupar alrededor de 1 GB o más)…"
-ollama pull "$MODEL" || fail "Ollama funciona, pero no se pudo descargar $MODEL. Repite: ollama pull $MODEL"
-say "Instalación completada: OpenChat, dependencias, Ollama y modelo local."
+say "Instalación de OpenChat completada."
 say "Iniciar: $BIN/openchat"
 say "Desinstalar OpenChat: $BIN/openchat-uninstall"
 say "El desinstalador no elimina Ollama ni el modelo descargado."
