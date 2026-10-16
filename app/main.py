@@ -53,7 +53,7 @@ class SetupDialog(QDialog):
         box=QVBoxLayout(self); box.setContentsMargins(30,28,30,28); box.setSpacing(14)
         logo=QLabel("◕ᴗ◕"); logo.setObjectName("setupMascot"); logo.setAlignment(Qt.AlignmentFlag.AlignCenter); logo.setStyleSheet("font-size:38px;color:#b8a8ff;background:#29233e;border-radius:22px;padding:12px"); box.addWidget(logo)
         self.mascot=logo; self.mascot_phase=False; self.mascot_timer=QTimer(self); self.mascot_timer.timeout.connect(self.animate_mascot); self.mascot_timer.start(700)
-        helper=QLabel("¡Hola! Soy Chispa, la mascota de OpenChat ✨\\nTe acompaño paso a paso. Primero conectaremos tu IA y después podrás empezar a crear."); helper.setWordWrap(True); helper.setAlignment(Qt.AlignmentFlag.AlignCenter); helper.setStyleSheet("color:#d6d0f0;font-size:13px;background:#242333;border:1px solid #39354f;border-radius:14px;padding:12px"); box.addWidget(helper)
+        helper=QLabel("¡Hola! Soy Chispa, la mascota de OpenChat ✨\nTe acompaño paso a paso. Primero conectaremos tu IA y después podrás empezar a crear."); helper.setWordWrap(True); helper.setAlignment(Qt.AlignmentFlag.AlignCenter); helper.setStyleSheet("color:#d6d0f0;font-size:13px;background:#242333;border:1px solid #39354f;border-radius:14px;padding:12px"); box.addWidget(helper)
         title=QLabel("Vamos a preparar OpenChat"); title.setAlignment(Qt.AlignmentFlag.AlignCenter); title.setStyleSheet("font-size:25px;font-weight:800"); box.addWidget(title)
         subtitle=QLabel("Antes de entrar, conecta tu cuenta de OpenRouter. Es obligatorio para terminar la configuración."); subtitle.setWordWrap(True); subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter); subtitle.setStyleSheet("color:#aeb0c3;font-size:13px"); box.addWidget(subtitle)
         box.addSpacing(8); box.addWidget(QLabel("Tu clave API de OpenRouter"))
@@ -154,7 +154,7 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         QTextEdit{background:#242630;border:1px solid #3b3d4b;border-radius:15px;padding:13px;selection-background-color:#6556b4}
         QTextEdit:focus{border:1px solid #9383ff} QScrollArea{border:0}
         """)
-        self.add_message("assistant","¡Hola! Soy OpenChat ✨. Chispa, mi mascota, te acompañará mientras trabajamos.\\n\\nPuedes escribirme directamente sin pulsar el cuadro de texto. Pulsa Intro para enviar y Mayús+Intro para saltar de línea. Si me pides crear archivos, prepararé el contenido para que puedas guardarlo. ¿Qué hacemos hoy?")
+        self.add_message("assistant","¡Hola! Soy OpenChat ✨. Chispa, mi mascota, te acompañará mientras trabajamos.\n\nPuedes escribirme directamente sin pulsar el cuadro de texto. Pulsa Intro para enviar y Mayús+Intro para saltar de línea. Si me pides crear archivos, prepararé el contenido para que puedas guardarlo. ¿Qué hacemos hoy?")
         effect=QGraphicsOpacityEffect(self); self.setGraphicsEffect(effect); effect.setOpacity(0.0)
         self.fade=QPropertyAnimation(effect,b"opacity",self); self.fade.setDuration(600); self.fade.setStartValue(0.0); self.fade.setEndValue(1.0); self.fade.setEasingCurve(QEasingCurve.Type.OutCubic); self.fade.start()
         QApplication.instance().installEventFilter(self)
@@ -238,13 +238,13 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         self.thread.started.connect(self.worker.run); self.worker.status.connect(self.status.setText); self.worker.done.connect(self.answer); self.worker.done.connect(self.thread.quit); self.thread.finished.connect(self.cleanup); self.thread.start()
     def answer(self,text,source):
         self.hide_typing(); self.last_answer=text
-        matches=re.findall(r'<openchat-file\\s+name=["\\']([^"\\']+)["\\']\\s*>(.*?)</openchat-file>',text,re.S|re.I)
+        matches=re.findall(r"""<openchat-file\s+name=["']([^"']+)["']\s*>(.*?)</openchat-file>""",text,re.S|re.I)
         self.generated_files={}
         for name,content in matches:
             name=Path(name.replace("\\\\","/")).name
             if name and name not in (".",".."): self.generated_files[name]=content.strip()+"\\n"
         self.files_btn.setEnabled(bool(self.generated_files))
-        shown=re.sub(r'<openchat-file\\s+name=["\\']([^"\\']+)["\\']\\s*>(.*?)</openchat-file>',lambda m:"📄 Archivo preparado: "+Path(m.group(1).replace("\\\\","/")).name,text,flags=re.S|re.I)
+        shown=re.sub(r"""<openchat-file\s+name=["']([^"']+)["']\s*>(.*?)</openchat-file>""",lambda m:"📄 Archivo preparado: "+Path(m.group(1).replace("\\\\","/")).name,text,flags=re.S|re.I)
         shown=shown.replace("\\\\n","\\n")
         self.add_message("assistant",shown); self.messages.append({"role":"assistant","content":text})
         if self.generated_files: self.status.setText(str(len(self.generated_files))+" archivo(s) listo(s) para guardar · "+source)
