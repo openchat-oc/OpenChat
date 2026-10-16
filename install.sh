@@ -109,3 +109,5 @@ say "Instalación completada: OpenChat, dependencias, Ollama y modelo local."
 say "Iniciar: $BIN/openchat"
 say "Desinstalar OpenChat: $BIN/openchat-uninstall"
 say "El desinstalador no elimina Ollama ni el modelo descargado."
+say "Abriendo OpenChat…"
+"$BIN/openchat" >/tmp/openchat-app.log 2>&1 &
