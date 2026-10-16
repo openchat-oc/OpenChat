@@ -214,8 +214,8 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         if conflicts:
             answer=QMessageBox.question(
                 self,"Confirmar sobrescritura",
-                "Ya existen estos archivos y se reemplazarán solo si lo autorizas:\\n\\n"+
-                "\\n".join(conflicts)+"\\n\\n¿Quieres sobrescribirlos?",
+                "Ya existen estos archivos y se reemplazarán solo si lo autorizas:\n\n"+
+                "\n".join(conflicts)+"\n\n¿Quieres sobrescribirlos?",
                 QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No)
             overwrite=answer==QMessageBox.StandardButton.Yes
@@ -230,14 +230,14 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
                 errors.append(name+": "+str(e))
         if saved:
             self.status.setText("Guardados "+str(len(saved))+" archivo(s) en "+str(root))
-            message="Se han guardado estos archivos:\\n\\n"+"\\n".join(saved)+"\\n\\nCarpeta: "+str(root)
-            if skipped: message+="\\n\\nNo se sobrescribieron:\\n"+"\\n".join(skipped)
-            if errors: message+="\\n\\nErrores:\\n"+"\\n".join(errors)
+            message="Se han guardado estos archivos:\n\n"+"\n".join(saved)+"\n\nCarpeta: "+str(root)
+            if skipped: message+="\n\nNo se sobrescribieron:\n"+"\n".join(skipped)
+            if errors: message+="\n\nErrores:\n"+"\n".join(errors)
             QMessageBox.information(self,"Archivos creados",message)
         elif errors or skipped:
             message="No se guardó ningún archivo."
-            if skipped: message+="\\n\\nNo se sobrescribieron:\\n"+"\\n".join(skipped)
-            if errors: message+="\\n\\nErrores:\\n"+"\\n".join(errors)
+            if skipped: message+="\n\nNo se sobrescribieron:\n"+"\n".join(skipped)
+            if errors: message+="\n\nErrores:\n"+"\n".join(errors)
             QMessageBox.warning(self,"No se pudieron guardar",message)
     def save_answer(self):
         if not self.last_answer.strip(): QMessageBox.information(self,"Aún no hay respuesta","Primero pide a OpenChat el contenido que quieres guardar."); return
@@ -270,7 +270,7 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         shown=re.sub(r"""<openchat-file\s+name=["']([^"']+)["']\s*>(.*?)</openchat-file>""",lambda m:"📄 Archivo preparado: "+(m.group(1).strip() if is_safe_filename(m.group(1).strip()) else "nombre de archivo no permitido"),text,flags=re.S|re.I)
         if rejected:
             shown += "\n\nSe han descartado nombres de archivo no seguros: " + ", ".join(rejected)
-        shown=shown.replace("\\\\n","\\n")
+        shown=shown.replace("\\\n","\n")
         self.add_message("assistant",shown); self.messages.append({"role":"assistant","content":text})
         if self.generated_files: self.status.setText(str(len(self.generated_files))+" archivo(s) listo(s) para guardar · "+source)
         else: self.status.setText("Respuesta recibida · "+source)
