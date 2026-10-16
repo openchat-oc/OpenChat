@@ -339,7 +339,9 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         self.input.clear(); self.add_message("user",text); self.messages.append({"role":"user","content":text})
         save_history(self.messages)
         self.send.setEnabled(False); self.status.setText("OpenChat está pensando"); self.show_typing()
-        self.thread=QThread(self); self.worker=Worker(self.messages.copy(),self.key,self.mode,self.selected_model); self.worker.moveToThread(self.thread)
+        # Keep the system prompt plus a bounded recent context; full recent history stays on disk.
+        context=[self.messages[0]]+self.messages[-30:]
+        self.thread=QThread(self); self.worker=Worker(context,self.key,self.mode,self.selected_model); self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run); self.worker.status.connect(self.status.setText); self.worker.done.connect(self.answer); self.worker.done.connect(self.thread.quit); self.thread.finished.connect(self.cleanup); self.thread.start()
     def answer(self,text,source):
         self.hide_typing(); self.last_answer=text
