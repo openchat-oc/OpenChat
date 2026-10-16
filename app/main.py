@@ -216,8 +216,8 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
             except OSError as e: errors.append(safe+": "+str(e))
         if saved:
             self.status.setText("Guardados "+str(len(saved))+" archivo(s) en "+str(root))
-            message="Se han guardado estos archivos:\\n\\n"+"\\n".join(saved)+"\\n\\nCarpeta: "+str(root)
-            if errors: message+="\\n\\nErrores:\\n"+"\\n".join(errors)
+            message="Se han guardado estos archivos:\n\n"+"\n".join(saved)+"\n\nCarpeta: "+str(root)
+            if errors: message+="\n\nErrores:\n"+"\n".join(errors)
             QMessageBox.information(self,"Archivos creados",message)
         elif errors: QMessageBox.warning(self,"No se pudieron guardar", "\\n".join(errors))
     def save_answer(self):
@@ -242,7 +242,7 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         self.generated_files={}
         for name,content in matches:
             name=Path(name.replace("\\\\","/")).name
-            if name and name not in (".",".."): self.generated_files[name]=content.strip()+"\\n"
+            if name and name not in (".",".."): self.generated_files[name]=content.strip()+"\n"
         self.files_btn.setEnabled(bool(self.generated_files))
         shown=re.sub(r"""<openchat-file\s+name=["']([^"']+)["']\s*>(.*?)</openchat-file>""",lambda m:"📄 Archivo preparado: "+Path(m.group(1).replace("\\\\","/")).name,text,flags=re.S|re.I)
         shown=shown.replace("\\\\n","\\n")
