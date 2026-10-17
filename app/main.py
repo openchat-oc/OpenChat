@@ -296,16 +296,16 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         titles=QVBoxLayout(); brand=QLabel("OpenChat"); brand.setStyleSheet("font-size:22px;font-weight:800"); sub=QLabel("Tu espacio para pensar y crear"); sub.setStyleSheet("font-size:11px;color:#9b9db2"); titles.addWidget(brand); titles.addWidget(sub); row.addLayout(titles); row.addStretch()
         self.model=QLabel("●  "+("Automático · "+self.selected_model if self.mode=="auto" else ("OpenRouter · "+self.selected_model if self.mode=="cloud" else "Ollama local · "+self.local_model))); self.model.setStyleSheet("color:#86e0bd;font-size:12px"); row.addWidget(self.model)
         self.update_btn=QPushButton("↻  Actualizaciones"); self.update_btn.clicked.connect(self.check_updates); row.addWidget(self.update_btn)
-        self.agent_btn=QPushButton("⚡  Agente PC"); self.agent_btn.setToolTip("Abrir Open Interpreter para ejecutar una tarea real con confirmación"); self.agent_btn.clicked.connect(self.launch_pc_agent); row.addWidget(self.agent_btn)
+        # Open Interpreter se activa únicamente al pedir la creación de un TXT.
         gear=QPushButton("⚙  Ajustes"); gear.clicked.connect(self.configure); row.addWidget(gear); outer.addWidget(header)
         hero=QWidget(); hero.setObjectName("hero"); hr=QHBoxLayout(hero); hr.setContentsMargins(22,14,22,14)
         pet=QLabel("◕ᴗ◕"); pet.setAlignment(Qt.AlignmentFlag.AlignCenter); pet.setFixedSize(58,58); pet.setStyleSheet("font-size:22px;font-weight:800;color:#c9c0ff;background:#29233e;border:1px solid #554a7e;border-radius:20px"); hr.addWidget(pet)
-        hv=QVBoxLayout(); ht=QLabel("Chispa está contigo"); ht.setStyleSheet("font-size:15px;font-weight:700;color:#e3dcff"); hd=QLabel("Pregunta, crea archivos o usa ⚡ Agente PC para pedirle a Open Interpreter que trabaje en tu ordenador con confirmación antes de ejecutar acciones."); hd.setWordWrap(True); hd.setStyleSheet("font-size:12px;color:#b6b3ca"); hv.addWidget(ht); hv.addWidget(hd); hr.addLayout(hv,1); outer.addWidget(hero)
+        hv=QVBoxLayout(); ht=QLabel("Chispa está contigo"); ht.setStyleSheet("font-size:15px;font-weight:700;color:#e3dcff"); hd=QLabel("Pregunta, crea archivos y resuelve tareas. Si pides crear un TXT, Open Interpreter se activa automáticamente con confirmación antes de ejecutar acciones."); hd.setWordWrap(True); hd.setStyleSheet("font-size:12px;color:#b6b3ca"); hv.addWidget(ht); hv.addWidget(hd); hr.addLayout(hv,1); outer.addWidget(hero)
         self.scroll=QScrollArea(); self.scroll.setWidgetResizable(True); self.scroll.setFrameShape(QScrollArea.Shape.NoFrame); self.scroll.setObjectName("scroll")
         self.chat=QWidget(); self.chat.setObjectName("chat"); self.chatbox=QVBoxLayout(self.chat); self.chatbox.setContentsMargins(28,26,28,26); self.chatbox.setSpacing(18); self.chatbox.addStretch(); self.scroll.setWidget(self.chat); outer.addWidget(self.scroll,1)
         bottom=QWidget(); bottom.setObjectName("bottom"); b=QVBoxLayout(bottom); b.setContentsMargins(24,12,24,20); b.setSpacing(10)
         self.status=QLabel("Listo para empezar · clave verificada"); self.status.setStyleSheet("color:#9b9db2;font-size:12px"); b.addWidget(self.status)
-        line=QHBoxLayout(); line.setSpacing(10); self.input=ChatInput(); self.input.setPlaceholderText("Escribe lo que necesitas…  ·  Intro para enviar · Mayús+Intro para nueva línea"); self.input.setFixedHeight(82); self.input.setAcceptRichText(False); self.input.send_requested.connect(self.send_message); self.input.setTabChangesFocus(False); line.addWidget(self.input,1)
+        line=QHBoxLayout(); line.setSpacing(10); self.input=ChatInput(); self.input.setPlaceholderText("Escribe tu pregunta o describe el archivo que necesitas… · Intro para enviar"); self.input.setFixedHeight(92); self.input.setAcceptRichText(False); self.input.send_requested.connect(self.send_message); self.input.setTabChangesFocus(False); line.addWidget(self.input,1)
         self.send=QPushButton("Enviar  ↗"); self.send.setObjectName("send"); self.send.setMinimumWidth(120); self.send.setMinimumHeight(48); self.send.clicked.connect(self.send_message); line.addWidget(self.send); b.addLayout(line)
         actions=QHBoxLayout(); self.savefile=QPushButton("↓  Guardar respuesta"); self.savefile.clicked.connect(self.save_answer); actions.addWidget(self.savefile); self.files_btn=QPushButton("▣  Guardar archivos creados"); self.files_btn.clicked.connect(self.save_generated_files); self.files_btn.setEnabled(False); actions.addWidget(self.files_btn); actions.addStretch(); tip=QLabel("Tus conversaciones se procesan con la IA elegida"); tip.setStyleSheet("color:#77798d;font-size:11px"); actions.addWidget(tip); b.addLayout(actions); outer.addWidget(bottom)
         self.setStyleSheet("""
@@ -436,6 +436,15 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         if not text or self.thread is not None: return
         self.input.clear(); self.add_message("user",text); self.messages.append({"role":"user","content":text})
         save_history(self.messages)
+        # Open Interpreter solo se activa cuando se pide explícitamente crear un TXT.
+        txt_request = bool(re.search(r"\\b(crea|crear|creame|créame|haz|hazme|genera|generame|genérame|escribe|guarda|prepara)\\b", text, re.I) and re.search(r"\\b(txt|archivo de texto|fichero de texto|\\.txt)\\b", text, re.I))
+        if txt_request:
+            try:
+                task = ("Crea el archivo TXT solicitado en el Escritorio del usuario (en Windows, usa Desktop si Escritorio no existe). Si no indica nombre, usa archivo-openchat.txt. No modifiques ni borres otros archivos y no uses sudo ni privilegios elevados. Solicita aprobación antes de ejecutar acciones. Petición original: " + text)
+                launch_agent(task, self.key if self.mode in ("auto", "cloud") else "", self.selected_model)
+                self.status.setText("Open Interpreter iniciado para crear el TXT · revisa la terminal y aprueba las acciones")
+            except (OSError, RuntimeError, ValueError) as e:
+                QMessageBox.warning(self, "Open Interpreter no disponible", "No se pudo iniciar Open Interpreter para crear el TXT. OpenChat seguirá respondiendo.\\n\\n" + str(e))
         self.send.setEnabled(False); self.status.setText("OpenChat está pensando"); self.show_typing()
         # Keep the system prompt plus a bounded recent context; full recent history stays on disk.
         context=[self.messages[0]]+self.messages[-30:]
