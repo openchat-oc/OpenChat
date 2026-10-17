@@ -6,6 +6,16 @@ BIN="$HOME/.local/bin"
 APPS="$HOME/.local/share/applications"
 ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
 MODEL="qwen2.5:1.5b"
+# Pick a conservative model size from physical RAM and CPU count.
+if [ -r /proc/meminfo ]; then
+  RAM_KB=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
+  CORES=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)
+  if [ "${RAM_KB:-0}" -lt 6291456 ] || [ "${CORES:-2}" -le 2 ]; then
+    MODEL="qwen2.5:0.5b"
+  elif [ "${RAM_KB:-0}" -gt 10485760 ]; then
+    MODEL="qwen2.5:3b"
+  fi
+fi
 say(){ printf '\033[1;35m[OpenChat]\033[0m %s\n' "$*"; }
 fail(){ printf '[OpenChat] %s\n' "$*" >&2; exit 1; }
 has(){ command -v "$1" >/dev/null 2>&1; }
