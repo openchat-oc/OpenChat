@@ -78,6 +78,7 @@ Cubren: configuración y secretos, historial y migración desde la versión ante
 
 ## Limitaciones conocidas
 
+- El llavero del sistema solo se probó con un llavero simulado (en este entorno no hay uno real); la ruta del archivo privado sí se probó de verdad.
 - **No se ha probado** contra OpenRouter real ni con un modelo de Ollama real (se usan servidores simulados); depende de que esos servicios mantengan su API.
 - Instalador de **Windows**: su sintaxis está validada, pero no se ha ejecutado en Windows. Instalador de **Linux**: ejecutado de verdad en Ubuntu; la detección de CachyOS/Arch se probó con un `pacman` simulado y los nombres de paquetes de Arch/Fedora/openSUSE no se han verificado en esas distribuciones.
 - La interfaz se ha probado en modo *offscreen*; falta revisarla a mano en Wayland/KDE y en Windows (foco, diálogos del sistema, escalado).
