@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import os
 import shlex
 import shutil
 import subprocess
@@ -35,11 +36,12 @@ def _python_with_interpreter() -> str | None:
     return None
 
 
-def launch_agent(task: str) -> None:
+def launch_agent(task: str, api_key: str = "", model: str = "") -> None:
     """Open a terminal running Open Interpreter for the requested task.
 
-    Open Interpreter's normal approval mode is deliberately retained: this
-    function never enables auto-run and never invokes the task as a shell command.
+    Normal approval mode is retained; this never enables auto-run and never
+    invokes the requested task as a shell command. Credentials are passed through
+    the child environment, not embedded in the process command line.
     """
     task = task.strip()
     if not task:
@@ -48,18 +50,28 @@ def launch_agent(task: str) -> None:
     if not python:
         raise FileNotFoundError(
             "No encuentro Open Interpreter. Instálalo en un entorno separado y "
-            "vuelve a intentarlo. En Linux: python -m venv "
+            "vuelve a intentarlo. En Linux: python3 -m venv "
             "~/.local/share/openchat-interpreter && "
             "~/.local/share/openchat-interpreter/bin/pip install open-interpreter"
         )
 
     encoded = base64.b64encode(task.encode("utf-8")).decode("ascii")
     code = (
-        "import base64; from interpreter import interpreter; "
+        "import base64, os; from interpreter import interpreter; "
         "interpreter.auto_run_mode='off'; "
+        "key=os.environ.get('OPENCHAT_OPENROUTER_KEY', ''); "
+        "model=os.environ.get('OPENCHAT_OPENROUTER_MODEL', ''); "
+        "interpreter.llm.model='openai/'+model if key and model else interpreter.llm.model; "
+        "interpreter.llm.api_base='https://openrouter.ai/api/v1' if key and model else interpreter.llm.api_base; "
+        "interpreter.llm.api_key=key if key and model else interpreter.llm.api_key; "
         f"interpreter.chat(base64.b64decode('{encoded}').decode('utf-8')); "
         "input('Tarea terminada. Pulsa Intro para cerrar esta ventana...')"
     )
+
+    child_env = os.environ.copy()
+    if api_key and model:
+        child_env["OPENCHAT_OPENROUTER_KEY"] = api_key
+        child_env["OPENCHAT_OPENROUTER_MODEL"] = model
 
     if sys.platform.startswith("linux"):
         terminals = [
@@ -72,7 +84,7 @@ def launch_agent(task: str) -> None:
         for name, prefix in terminals:
             if shutil.which(name):
                 shell_line = " ".join(shlex.quote(part) for part in [python, "-c", code])
-                subprocess.Popen(prefix + ["bash", "-lc", shell_line])
+                subprocess.Popen(prefix + ["bash", "-lc", shell_line], env=child_env)
                 return
         raise RuntimeError(
             "No encuentro un emulador de terminal compatible. Abre una terminal "
@@ -80,11 +92,13 @@ def launch_agent(task: str) -> None:
         )
 
     if sys.platform == "win32":
-        command = f"& '{python.replace(chr(39), chr(39)+chr(34)+chr(39)+chr(34)+chr(39))}' -c "
+        escaped_python = python.replace("'", "''")
+        command = f"& '{escaped_python}' -c "
         command += "'" + code.replace("'", "''") + "'; Read-Host 'Pulsa Intro para cerrar'"
         subprocess.Popen(
             ["powershell.exe", "-NoExit", "-Command", command],
             creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
+            env=child_env,
         )
         return
 
