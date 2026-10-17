@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QAbstractSpinBox, QApplication, QComboBox, QDialo
 
 from .. import REPO_URL, __version__, config, updater
 from ..agent.loop import AGENT_SYSTEM, CHAT_SYSTEM
-from ..conversations import ConversationStore, auto_title, build_context
+from ..conversations import ConversationStore, auto_title, build_context, import_legacy_history
 from ..fileops import GeneratedFile, extract_files, save_text, strip_file_blocks, unique_path
 from ..providers import OllamaProvider, OpenRouterProvider
 from .chispa import ChispaWidget
@@ -39,6 +39,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.s = settings
         self.store = store or ConversationStore()
+        import_legacy_history(self.store)
         self.log = config.setup_logging()
         self.conv_id: str | None = None
         self.history: list[dict] = []
@@ -83,7 +84,7 @@ class MainWindow(QMainWindow):
         self.conv_list.currentItemChanged.connect(self._conv_selected)
         self.conv_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu); self.conv_list.customContextMenuRequested.connect(self._conv_menu)
         l.addWidget(self.conv_list, 1)
-        sec = QLabel("MOTOR DE IA"); sec.setObjectName("section"); l.addWidget(sec)
+        l.addSpacing(6); sec = QLabel("MOTOR DE IA"); sec.setObjectName("section"); l.addWidget(sec)
         self.mode_combo = QComboBox(); self.mode_combo.setAccessibleName("Motor de IA")
         for k, v in MODE_LABEL.items():
             self.mode_combo.addItem(v, k)
@@ -94,7 +95,7 @@ class MainWindow(QMainWindow):
         self.refresh_btn.setAccessibleName("Recargar modelos"); self.refresh_btn.clicked.connect(self.check_engine)
         mrow.addWidget(self.model_combo, 1); mrow.addWidget(self.refresh_btn); l.addLayout(mrow)
         self.engine_status = QLabel("○ sin comprobar"); self.engine_status.setProperty("muted", True); self.engine_status.setWordWrap(True); l.addWidget(self.engine_status)
-        sec2 = QLabel("MODO AGENTE"); sec2.setObjectName("section"); l.addWidget(sec2)
+        l.addSpacing(8); sec2 = QLabel("MODO AGENTE"); sec2.setObjectName("section"); l.addWidget(sec2)
         self.agent_btn = QPushButton("Agente: desactivado"); self.agent_btn.setCheckable(True); self.agent_btn.setChecked(self.s["agent_enabled"])
         self.agent_btn.setAccessibleName("Activar o desactivar el modo agente"); self.agent_btn.toggled.connect(self._agent_toggled); l.addWidget(self.agent_btn)
         self.ws_btn = QPushButton(); self.ws_btn.clicked.connect(self.pick_workspace); l.addWidget(self.ws_btn)
@@ -277,7 +278,7 @@ class MainWindow(QMainWindow):
 
     def _remove_widget(self, w: QWidget) -> None:
         host = getattr(w, "_row_host", w)
-        self.col_layout.removeWidget(host); host.deleteLater()
+        host.hide(); self.col_layout.removeWidget(host); host.deleteLater()
 
     def _on_scroll(self, v: int) -> None:
         bar = self.scroll.verticalScrollBar(); self._stick_bottom = v >= bar.maximum() - 40
@@ -550,8 +551,8 @@ class MainWindow(QMainWindow):
         hw = QWidget(); hw.setLayout(head); head.setContentsMargins(0, 0, 0, 0); self.files_layout.addWidget(hw)
         for name, info in self.generated.items():
             row = QHBoxLayout(); row.setContentsMargins(0, 0, 0, 0)
-            state = f"✓ guardado en {info['path']}" if info["path"] else ("⚠ incompleto (respuesta cortada)" if not info["complete"] else "sin guardar")
-            lab = QLabel(f"📄 <b>{name}</b> <span style='color:#9b9db2'>· {Path(name).suffix or 'archivo'} · {state}</span>"); lab.setTextFormat(Qt.TextFormat.RichText)
+            state = f"✓ guardado en {Path(info['path']).parent.name or info['path']}" if info["path"] else ("⚠ incompleto (respuesta cortada)" if not info["complete"] else "sin guardar")
+            lab = QLabel(f"📄 <b>{name}</b> <span style='color:#9b9db2'>· {Path(name).suffix or 'archivo'} · {state}</span>"); lab.setTextFormat(Qt.TextFormat.RichText); lab.setToolTip(info["path"] or "Aún no está guardado en el disco")
             row.addWidget(lab, 1)
             for text, slot in (("Ver / editar", lambda _=False, n=name: self.edit_file(n)), ("Guardar", lambda _=False, n=name: self.save_file(n)),
                                ("↻ Regenerar", lambda _=False, n=name: self.regenerate(n))):

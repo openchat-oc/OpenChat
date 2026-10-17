@@ -81,6 +81,29 @@ class ConversationStore:
         return [{"role": r, "content": t} for r, t in rows]
 
 
+def import_legacy_history(store: "ConversationStore", legacy: Path | None = None) -> bool:
+    """Importa una sola vez el antiguo ``conversation.json`` (lista de mensajes) como una conversación."""
+    import json
+    legacy = legacy or (config_dir() / "conversation.json")
+    marker = legacy.with_name(".conversation-imported")
+    if marker.exists() or not legacy.exists():
+        return False
+    try:
+        data = json.loads(legacy.read_text(encoding="utf-8"))
+        msgs = [m for m in data if isinstance(m, dict) and m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str)]
+    except (OSError, ValueError, TypeError):
+        return False
+    if msgs:
+        conv = store.create("Conversación anterior")
+        for m in msgs:
+            store.add_message(conv.id, m["role"], m["content"])
+    try:
+        marker.write_text("importado; conversation.json se conserva sin cambios\n", encoding="utf-8")
+    except OSError:
+        return False
+    return bool(msgs)
+
+
 def auto_title(text: str) -> str:
     one = " ".join(text.split())
     return (one[:48] + "…") if len(one) > 48 else (one or "Conversación nueva")

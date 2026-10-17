@@ -99,6 +99,7 @@ class Settings:
         try:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
             if isinstance(raw, dict):
+                raw = self._migrate(raw)
                 self.data.update({k: v for k, v in raw.items() if k in DEFAULTS})
                 self.loaded_from_disk = True
         except FileNotFoundError:
@@ -108,6 +109,20 @@ class Settings:
                 self.path.replace(self.path.with_suffix(".json.bak"))
             except OSError:
                 pass
+
+    @staticmethod
+    def _migrate(raw: dict) -> dict:
+        """Acepta el formato anterior ({"mode","model","setup_complete"}) sin perder la elección del usuario."""
+        out = dict(raw)
+        if "setup_complete" in raw and "setup_done" not in raw:
+            out["setup_done"] = bool(raw["setup_complete"])
+        model = raw.get("model")
+        if isinstance(model, str) and model.strip():
+            key = "local_model" if raw.get("mode") == "local" else "cloud_model"
+            out.setdefault(key, model.strip())
+        if out.get("mode") not in ("cloud", "local"):
+            out.pop("mode", None)
+        return out
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

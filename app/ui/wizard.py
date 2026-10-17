@@ -107,7 +107,7 @@ class SetupWizard(QDialog):
         self.model_combo.setAccessibleName("Modelo de OpenRouter")
         self.load_btn = QPushButton("Cargar lista"); self.load_btn.setEnabled(False); self.load_btn.clicked.connect(self._load_models)
         mrow.addWidget(self.model_combo, 1); mrow.addWidget(self.load_btn); l.addLayout(mrow)
-        self.fb_check = QCheckBox("Si la nube falla, usar Ollama local como respaldo (siempre te lo avisaré)")
+        self.fb_check = QCheckBox("Respaldo: usar Ollama si la nube falla (siempre con aviso)")
         self.fb_check.setChecked(self.s["fallback_to_local"]); l.addWidget(self.fb_check); l.addStretch()
         if config.get_api_key():
             self.key_edit.setPlaceholderText("Ya hay una clave guardada: déjalo vacío para comprobarla, o pega otra")

@@ -2,14 +2,14 @@
 
 ![Logo de OpenChat](app/logo.svg)
 
-Asistente de chat de escritorio para Linux y Windows. Usa Laguna a través de OpenRouter y tiene una IA local de respaldo con Ollama.
+Asistente de IA de escritorio para Linux y Windows. Permite elegir OpenRouter (nube) u Ollama (local); OpenChat no cambia de proveedor en silencio.
 
 ## Incluye
 - Interfaz de chat de escritorio con icono propio.
 - Configuración de clave OpenRouter desde la app; la clave se guarda solo en el equipo.
 - Modelo en la nube: \`poolside/laguna-s-2.1:free\`.
 - IA local: Ollama con \`qwen2.5:1.5b\`.
-- Instaladores para Linux y Windows que preparan las dependencias de Python, Ollama y el modelo local.
+- Instaladores para Linux y Windows. Ollama y el modelo local son opcionales para no descargar gigabytes sin permiso.
 - Desinstalador de OpenChat. Ollama y su modelo se conservan al desinstalar la app.
 - No necesita GitHub Releases.
 
@@ -51,6 +51,26 @@ La clave API no debe publicarse ni guardarse en el repositorio. Las conversacion
 
     python -m pip install -r requirements.txt
     python -m app.main
+
+
+## Funcionalidad y limitaciones
+
+- El asistente de configuración permite seleccionar nube o local y persiste el proveedor y el modelo elegidos.
+- La conversación usa el proveedor seleccionado sin fallback silencioso.
+- El guardado de archivos generados comprueba los nombres, evita sobrescrituras no autorizadas y verifica la escritura.
+- El historial persistente, el modo agente con herramientas, el streaming/cancelación y el actualizador transaccional todavía no están implementados como funciones completas. El botón de actualización comprueba el repositorio Git local y no instala automáticamente una actualización.
+
+## Pruebas automatizadas
+
+Desde la raíz del repositorio, con Python instalado, ejecuta:
+
+    python -m unittest discover -s tests -v
+
+Las pruebas añadidas cubren la validación de nombres de archivo, la escritura UTF-8, la protección frente a sobrescrituras accidentales y la sustitución explícita de archivos existentes. No sustituyen las pruebas de interfaz gráfica ni las pruebas reales contra OpenRouter u Ollama.
+
+## Guardado seguro de archivos
+
+Los archivos generados se guardan en la carpeta que elijas. OpenChat rechaza nombres que contengan rutas o nombres especiales, comprueba el contenido escrito y pide confirmación antes de sobrescribir archivos existentes. La ejecución de los archivos generados no es automática.
 
 ## Licencia
 

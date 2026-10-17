@@ -52,7 +52,7 @@ QFrame#toolCard {{ background: #1c2230; border: 1px solid #2e3d57; border-radius
 QFrame#codeBlock {{ background: #101117; border: 1px solid {BORDER}; border-radius: 10px; }}
 QFrame#filesPanel {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 12px; }}
 QFrame#banner {{ background: #2b2740; border: 1px solid #5b5290; border-radius: 10px; }}
-QPlainTextEdit#code {{ background: transparent; border: 0; padding: 4px; font-family: 'JetBrains Mono','Fira Code','DejaVu Sans Mono',monospace; font-size: 13px; }}
+QPlainTextEdit#code {{ background: transparent; border: 0; padding: 0px; font-family: 'JetBrains Mono','Fira Code','DejaVu Sans Mono',monospace; font-size: 13px; }}
 QProgressBar {{ background: {SURFACE2}; border: 0; border-radius: 6px; height: 10px; text-align: center; }}
 QProgressBar::chunk {{ background: {ACCENT}; border-radius: 6px; }}
 QCheckBox {{ spacing: 8px; }}

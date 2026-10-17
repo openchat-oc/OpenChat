@@ -159,3 +159,42 @@ def test_truncated_file_block_is_flagged_incomplete():
     files = extract_files('<openchat-file name="x.py">\nprint(1)\nprint(')
     assert len(files) == 1 and not files[0].complete
     assert "incompleto" in strip_file_blocks('<openchat-file name="x.py">\nprint(')
+
+
+# ---------------------------------------------------------------- migración desde la versión anterior de main
+def test_old_settings_format_is_migrated_without_losing_choices():
+    cfg.config_dir().mkdir(parents=True)
+    (cfg.config_dir() / "settings.json").write_text(json.dumps({"mode": "local", "model": "llama3.2:1b", "setup_complete": True}), encoding="utf-8")
+    s = cfg.Settings()
+    assert s["mode"] == "local" and s["local_model"] == "llama3.2:1b" and s["setup_done"] is True
+    (cfg.config_dir() / "settings.json").write_text(json.dumps({"mode": "cloud", "model": "openai/gpt-4o-mini", "setup_complete": False}), encoding="utf-8")
+    s = cfg.Settings()
+    assert s["cloud_model"] == "openai/gpt-4o-mini" and s["setup_done"] is False
+    (cfg.config_dir() / "settings.json").write_text(json.dumps({"mode": "inventado"}), encoding="utf-8")
+    assert cfg.Settings()["mode"] == "cloud"
+
+
+def test_legacy_single_conversation_is_imported_once_and_file_is_kept():
+    from app.conversations import import_legacy_history
+    cfg.config_dir().mkdir(parents=True)
+    legacy = cfg.config_dir() / "conversation.json"
+    legacy.write_text(json.dumps([{"role": "user", "content": "hola"}, {"role": "assistant", "content": "qué tal"}, {"role": "system", "content": "x"}]), encoding="utf-8")
+    store = ConversationStore()
+    assert import_legacy_history(store) is True
+    convs = store.list()
+    assert len(convs) == 1 and store.messages(convs[0].id) == [{"role": "user", "content": "hola"}, {"role": "assistant", "content": "qué tal"}]
+    assert import_legacy_history(store) is False and len(store.list()) == 1     # solo una vez
+    assert legacy.exists()                                                      # no se borra nada del usuario
+
+
+def test_save_text_uses_hardened_writer_and_rejects_unsafe_names(tmp_path):
+    with pytest.raises(OSError):
+        save_text(tmp_path / "a:b.txt", "x")
+    real = tmp_path / "real.txt"; real.write_text("original")
+    link = tmp_path / "enlace.txt"; link.symlink_to(real)
+    outside = tmp_path / "otro"; outside.mkdir()
+    (outside / "x.txt").write_text("fuera")
+    sub = tmp_path / "sub"; sub.mkdir(); (sub / "t.txt").symlink_to(outside / "x.txt")
+    with pytest.raises(OSError):
+        save_text(sub / "t.txt", "pisado", overwrite=True)                       # el enlace apunta fuera de la carpeta
+    assert (outside / "x.txt").read_text() == "fuera"

@@ -111,7 +111,7 @@ class SettingsDialog(QDialog):
         lay = QVBoxLayout(self)
         form = QFormLayout()
         self.auto_update = QCheckBox("Comprobar actualizaciones al abrir OpenChat"); self.auto_update.setChecked(settings["auto_update_check"])
-        self.fallback = QCheckBox("Si la nube falla, usar Ollama local como respaldo (te lo avisaré en el chat)")
+        self.fallback = QCheckBox("Respaldo: usar Ollama si la nube falla (siempre con aviso)")
         self.fallback.setChecked(settings["fallback_to_local"]); self.fallback.setToolTip("Desactivado por defecto: OpenChat nunca cambia de proveedor en silencio.")
         self.workspace = QLineEdit(str(settings.workspace_path())); pick = QPushButton("Elegir…"); pick.clicked.connect(self._pick)
         wrow = QHBoxLayout(); wrow.addWidget(self.workspace, 1); wrow.addWidget(pick)

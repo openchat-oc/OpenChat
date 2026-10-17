@@ -56,6 +56,8 @@ class CodeBlock(QFrame):
         top.addWidget(self.lang); top.addStretch(); top.addWidget(self.copy_btn); lay.addLayout(top)
         self.edit = QPlainTextEdit(); self.edit.setObjectName("code"); self.edit.setReadOnly(True)
         self.edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.edit.document().setDocumentMargin(2)
+        self.edit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         lay.addWidget(self.edit)
         self.set_code(lang, code)
 
@@ -65,7 +67,7 @@ class CodeBlock(QFrame):
             self.edit.setPlainText(code)
         lines = max(1, code.count("\n") + 1)
         fm = QFontMetrics(self.edit.font())
-        self.edit.setFixedHeight(min(lines, 26) * fm.lineSpacing() + 22)
+        self.edit.setFixedHeight(min(lines, 26) * fm.lineSpacing() + 24)
 
     def code(self) -> str:
         return self.edit.toPlainText()

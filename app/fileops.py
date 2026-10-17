@@ -1,11 +1,11 @@
 """Creación y guardado seguro de archivos, y extracción de archivos generados por el modelo."""
 from __future__ import annotations
 
-import os
 import re
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+from .safe_files import write_text_safely
 
 _WIN_RESERVED = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))}
 _BAD_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -62,28 +62,17 @@ def unique_path(path: Path) -> Path:
 
 
 def save_text(path: Path, content: str, overwrite: bool = False) -> Path:
-    """Escritura atómica con verificación posterior. Nunca sobrescribe sin ``overwrite=True``."""
+    """Guarda texto UTF-8 con las garantías de ``safe_files`` (creación exclusiva, sin seguir enlaces
+    hacia fuera, escritura atómica y verificación). Nunca sobrescribe sin ``overwrite=True``."""
     path = Path(path)
-    if path.exists() and not overwrite:
-        raise FileExistsError(f"Ya existe: {path}")
-    path.parent.mkdir(parents=True, exist_ok=True)
     data = content.replace("\r\n", "\n")
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".openchat-", suffix=".tmp")
     try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(data)
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, path)
-    except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
-    if path.read_text(encoding="utf-8") != data:
-        raise OSError(f"La verificación del archivo guardado falló: {path}")
-    return path
+        written = write_text_safely(path.parent, path.name, data, overwrite=overwrite)
+    except ValueError as exc:
+        raise OSError(str(exc)) from exc
+    if written is None:
+        raise FileExistsError(f"Ya existe: {path}")
+    return written
 
 
 # ------------------------------------------------------------ bloques <openchat-file>
