@@ -157,7 +157,8 @@ class SetupDialog(QDialog):
         box.addWidget(self.mode)
         box.addWidget(QLabel("Modelo"))
         self.model=QComboBox(); self.model.setEditable(True)
-        for model in (MODEL,"anthropic/claude-3.5-sonnet","openai/gpt-4o-mini",LOCAL): self.model.addItem(model)
+        for model in (MODEL,"anthropic/claude-3.5-sonnet","openai/gpt-4o-mini",LOCAL,system_profile()["local_model"]):
+            if self.model.findText(model)<0: self.model.addItem(model)
         self.model.setCurrentText(self.settings.get("model",MODEL)); box.addWidget(self.model)
         profile=system_profile()
         self.profile_info=QLabel(f"Este PC: {profile['ram_gb']} GB de RAM · {profile['cores']} núcleos. Modelo local recomendado: {profile['local_model']} ({profile['tier']}).")
@@ -180,7 +181,9 @@ class SetupDialog(QDialog):
         self.entry.setEnabled(cloud); self.show_key.setEnabled(cloud)
         if mode=="auto": self.status.setText("Automático: prefiere OpenRouter si hay una clave válida; si falla, prueba el modelo local recomendado de Ollama. El estado del proveedor se mostrará en el chat.")
         elif mode=="cloud": self.status.setText("Se usará OpenRouter; se necesita una clave válida.")
-        else: self.status.setText("Se usará Ollama local. El modelo elegido debe estar descargado; OpenChat no descargará modelos sin permiso.")
+        else:
+            self.status.setText("Se usará Ollama local. Selecciona abajo un modelo que ya esté instalado; no se descargarán modelos sin permiso.")
+            if self.model.currentText() not in (LOCAL, system_profile()["local_model"]): self.model.setCurrentText(self.settings.get("local_model",system_profile()["local_model"]))
     def verify(self):
         mode=self.mode.currentData(); model=self.model.currentText().strip(); key=self.entry.text().strip()
         if not model: self.status.setText("Escribe el identificador del modelo de OpenRouter."); return
@@ -264,7 +267,7 @@ class Worker(QObject):
                 self.status.emit("OpenRouter no está disponible; probando Ollama local…")
                 try:
                     answer,source=self.ask_local()
-                    self.done.emit(answer,source+" · alternativa automática (OpenRouter falló)","")
+                    self.done.emit(answer,source+" · alternativa automática (OpenRouter falló)")
                     return
                 except Exception as local_error:
                     self.done.emit("Fallaron OpenRouter y Ollama.\\n\\nOpenRouter: "+str(cloud_error)+"\\nOllama: "+str(local_error)+"\\n\\nRevisa Ajustes y los modelos instalados.","Error")
