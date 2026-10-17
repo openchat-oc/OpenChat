@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import base64
-import os
 import shlex
 import shutil
 import subprocess
@@ -31,9 +30,6 @@ def _python_with_interpreter() -> str | None:
                     return str(candidate)
             except (OSError, subprocess.TimeoutExpired):
                 continue
-    found = shutil.which("interpreter")
-    if found:
-        return found
     return None
 
 
