@@ -251,7 +251,7 @@ class Worker(QObject):
         if self.mode=="local":
             try:
                 answer,source=self.ask_local(); self.done.emit(answer,source)
-            except Exception as e: self.done.emit("No se pudo obtener respuesta de Ollama.\\n\\n"+str(e),"Error")
+            except Exception as e: self.done.emit("No se pudo obtener respuesta de Ollama.\n\n"+str(e),"Error")
             return
         if self.mode=="cloud":
             try:
@@ -259,7 +259,7 @@ class Worker(QObject):
             except requests.HTTPError as e:
                 code=e.response.status_code if e.response is not None else "?"
                 self.done.emit("OpenRouter devolvió HTTP "+str(code)+". Comprueba clave, modelo y cuota. No se ha cambiado de proveedor automáticamente.","Error")
-            except Exception as e: self.done.emit("No se pudo conectar con OpenRouter.\\n\\n"+str(e),"Error")
+            except Exception as e: self.done.emit("No se pudo conectar con OpenRouter.\n\n"+str(e),"Error")
             return
         # Auto mode: cloud is preferred when a key exists; fallback is explicit in status/source.
         if self.key:
@@ -272,12 +272,12 @@ class Worker(QObject):
                     self.done.emit(answer,source+" · alternativa automática (OpenRouter falló)")
                     return
                 except Exception as local_error:
-                    self.done.emit("Fallaron OpenRouter y Ollama.\\n\\nOpenRouter: "+str(cloud_error)+"\\nOllama: "+str(local_error)+"\\n\\nRevisa Ajustes y los modelos instalados.","Error")
+                    self.done.emit("Fallaron OpenRouter y Ollama.\n\nOpenRouter: "+str(cloud_error)+"\\nOllama: "+str(local_error)+"\n\nRevisa Ajustes y los modelos instalados.","Error")
                     return
         try:
             answer,source=self.ask_local(); self.done.emit(answer,source+" · automático (sin clave de nube)")
         except Exception as e:
-            self.done.emit("El modo automático no tiene clave de OpenRouter y Ollama no está disponible.\\n\\n"+str(e)+"\\n\\nAbre Ajustes para añadir una clave o inicia Ollama con un modelo instalado.","Error")
+            self.done.emit("El modo automático no tiene clave de OpenRouter y Ollama no está disponible.\n\n"+str(e)+"\n\nAbre Ajustes para añadir una clave o inicia Ollama con un modelo instalado.","Error")
 
 class MainWindow(QMainWindow):
     def __init__(self,key,settings=None):
@@ -319,7 +319,7 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         QTextEdit:focus{border:1px solid #9383ff} QScrollArea{border:0}
         """)
         if len(self.messages)==1:
-            self.add_message("assistant","¡Hola! Soy OpenChat ✨. Chispa, mi mascota, te acompañará mientras trabajamos.\\n\\nPuedes escribirme directamente sin pulsar el cuadro de texto. Pulsa Intro para enviar y Mayús+Intro para saltar de línea. Si me pides crear archivos, prepararé el contenido para que puedas guardarlo. ¿Qué hacemos hoy?")
+            self.add_message("assistant","¡Hola! Soy OpenChat ✨. Chispa, mi mascota, te acompañará mientras trabajamos.\n\nPuedes escribirme directamente sin pulsar el cuadro de texto. Pulsa Intro para enviar y Mayús+Intro para saltar de línea. Si me pides crear archivos, prepararé el contenido para que puedas guardarlo. ¿Qué hacemos hoy?")
         else:
             for item in self.messages[1:]:
                 self.add_message(item["role"],item["content"])
@@ -424,14 +424,14 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         self.input.clear(); self.add_message("user",text); self.messages.append({"role":"user","content":text})
         save_history(self.messages)
         # Open Interpreter solo se activa cuando se pide explícitamente crear un TXT.
-        txt_request = bool(re.search(r"\\b(crea|crear|creame|créame|haz|hazme|genera|generame|genérame|escribe|guarda|prepara)\\b", text, re.I) and re.search(r"\\b(txt|archivo de texto|fichero de texto|\\.txt)\\b", text, re.I))
+        txt_request = bool(re.search(r"\b(crea|crear|creame|créame|haz|hazme|genera|generame|genérame|escribe|guarda|prepara)\b", text, re.I) and re.search(r"\b(txt|archivo de texto|fichero de texto|\.txt)\b", text, re.I))
         if txt_request:
             try:
                 task = ("Crea el archivo TXT solicitado en el Escritorio del usuario (en Windows, usa Desktop si Escritorio no existe). Si no indica nombre, usa archivo-openchat.txt. No modifiques ni borres otros archivos y no uses sudo ni privilegios elevados. Solicita aprobación antes de ejecutar acciones. Petición original: " + text)
                 launch_agent(task, self.key if self.mode in ("auto", "cloud") else "", self.selected_model)
                 self.status.setText("Open Interpreter iniciado para crear el TXT · revisa la terminal y aprueba las acciones")
             except (OSError, RuntimeError, ValueError) as e:
-                QMessageBox.warning(self, "Open Interpreter no disponible", "No se pudo iniciar Open Interpreter para crear el TXT. OpenChat seguirá respondiendo.\\n\\n" + str(e))
+                QMessageBox.warning(self, "Open Interpreter no disponible", "No se pudo iniciar Open Interpreter para crear el TXT. OpenChat seguirá respondiendo.\n\n" + str(e))
         self.send.setEnabled(False); self.status.setText("OpenChat está pensando"); self.show_typing()
         # Keep the system prompt plus a bounded recent context; full recent history stays on disk.
         context=[self.messages[0]]+self.messages[-30:]
