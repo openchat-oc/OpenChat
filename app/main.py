@@ -420,7 +420,7 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
             suggested)
         if not ok or not task.strip(): return
         try:
-            launch_agent(task)
+            launch_agent(task, self.key if self.mode in ("auto","cloud") else "", self.selected_model)
             self.status.setText("Agente de escritorio abierto en una terminal · revisa y aprueba cada acción.")
         except (OSError,RuntimeError,ValueError) as e:
             QMessageBox.warning(self,"No se pudo abrir el agente",str(e))
