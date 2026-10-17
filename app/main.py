@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-import sys, subprocess, re, json
+import sys, subprocess, re, json, os, platform
 from pathlib import Path
 from .safe_files import is_safe_filename, write_text_safely
+from .agent import launch_agent
 import requests
 from PySide6.QtCore import QObject, Signal, QThread, Qt, QTimer, QPropertyAnimation, QEasingCurve, QEvent
 from PySide6.QtGui import QIcon, QFont
 from PySide6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMessageBox, QPushButton, QScrollArea, QTextEdit, QVBoxLayout,
-    QWidget, QFileDialog, QProgressBar, QGraphicsOpacityEffect, QComboBox)
+    QWidget, QFileDialog, QProgressBar, QGraphicsOpacityEffect, QComboBox, QInputDialog)
 
 CONFIG = Path.home()/".config"/"openchat"
 KEYFILE = CONFIG/"openrouter.key"
@@ -16,6 +17,39 @@ HISTORY = CONFIG/"conversation.json"
 LEGACY = Path.home()/".config"/"oi-auto"/"openrouter.key"
 MODEL = "poolside/laguna-s-2.1:free"
 LOCAL = "qwen2.5:1.5b"
+
+def system_profile():
+    """Return a conservative local-model recommendation based on available RAM."""
+    ram_gb = 8.0
+    try:
+        if sys.platform.startswith("linux"):
+            with open("/proc/meminfo", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        ram_gb = int(line.split()[1]) / 1024 / 1024
+                        break
+        elif sys.platform == "win32":
+            import ctypes
+            class MemoryStatus(ctypes.Structure):
+                _fields_ = [("length", ctypes.c_ulong), ("memoryLoad", ctypes.c_ulong),
+                    ("totalPhys", ctypes.c_ulonglong), ("availPhys", ctypes.c_ulonglong),
+                    ("totalPageFile", ctypes.c_ulonglong), ("availPageFile", ctypes.c_ulonglong),
+                    ("totalVirtual", ctypes.c_ulonglong), ("availVirtual", ctypes.c_ulonglong),
+                    ("availExtendedVirtual", ctypes.c_ulonglong)]
+            status = MemoryStatus()
+            status.length = ctypes.sizeof(MemoryStatus)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+                ram_gb = status.totalPhys / (1024 ** 3)
+    except (OSError, ValueError, AttributeError):
+        pass
+    cores = os.cpu_count() or 2
+    if ram_gb < 6 or cores <= 2:
+        model, tier = "qwen2.5:0.5b", "básico"
+    elif ram_gb <= 10:
+        model, tier = "qwen2.5:1.5b", "equilibrado"
+    else:
+        model, tier = "qwen2.5:3b", "más capaz"
+    return {"ram_gb": round(ram_gb, 1), "cores": cores, "local_model": model, "tier": tier}
 
 def read_key():
     try:
@@ -34,12 +68,13 @@ def save_key(key):
     except OSError: pass
 
 def load_settings():
-    defaults={"mode":"cloud","model":MODEL,"setup_complete":False}
+    defaults={"mode":"auto","model":MODEL,"local_model":system_profile()["local_model"],"setup_complete":False}
     try:
         value=json.loads(SETTINGS.read_text(encoding="utf-8"))
         if isinstance(value,dict):
-            if value.get("mode") in ("cloud","local"): defaults["mode"]=value["mode"]
+            if value.get("mode") in ("auto","cloud","local"): defaults["mode"]=value["mode"]
             if isinstance(value.get("model"),str) and value["model"].strip(): defaults["model"]=value["model"].strip()
+            if isinstance(value.get("local_model"),str) and value["local_model"].strip(): defaults["local_model"]=value["local_model"].strip()
             if isinstance(value.get("setup_complete"),bool): defaults["setup_complete"]=value["setup_complete"]
     except (OSError,ValueError,TypeError):
         pass
@@ -47,7 +82,7 @@ def load_settings():
 
 def save_settings(settings):
     CONFIG.mkdir(parents=True,exist_ok=True)
-    payload={"mode":settings.get("mode","cloud"),"model":settings.get("model",MODEL),"setup_complete":bool(settings.get("setup_complete",True))}
+    payload={"mode":settings.get("mode","auto"),"model":settings.get("model",MODEL),"local_model":settings.get("local_model",system_profile()["local_model"]),"setup_complete":bool(settings.get("setup_complete",True))}
     temporary=SETTINGS.with_suffix(".tmp")
     temporary.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
     try: temporary.chmod(0o600)
@@ -116,19 +151,25 @@ class SetupDialog(QDialog):
         helper=QLabel("Chispa es la mascota de OpenChat. Elige dónde quieres ejecutar la IA; puedes cambiarlo después en Ajustes.")
         helper.setWordWrap(True); helper.setAlignment(Qt.AlignmentFlag.AlignCenter); box.addWidget(helper)
         box.addWidget(QLabel("Motor de IA"))
-        self.mode=QComboBox(); self.mode.addItem("Nube · OpenRouter","cloud"); self.mode.addItem("Local · Ollama","local")
-        idx=self.mode.findData(self.settings.get("mode","cloud"))
+        self.mode=QComboBox(); self.mode.addItem("Automático · recomendado","auto"); self.mode.addItem("Nube · OpenRouter","cloud"); self.mode.addItem("Local · Ollama","local")
+        idx=self.mode.findData(self.settings.get("mode","auto"))
         if idx>=0: self.mode.setCurrentIndex(idx)
         box.addWidget(self.mode)
         box.addWidget(QLabel("Modelo"))
         self.model=QComboBox(); self.model.setEditable(True)
-        for model in (MODEL,"anthropic/claude-3.5-sonnet","openai/gpt-4o-mini",LOCAL): self.model.addItem(model)
+        for model in (MODEL,"anthropic/claude-3.5-sonnet","openai/gpt-4o-mini",LOCAL,system_profile()["local_model"]):
+            if self.model.findText(model)<0: self.model.addItem(model)
         self.model.setCurrentText(self.settings.get("model",MODEL)); box.addWidget(self.model)
+        profile=system_profile()
+        self.profile_info=QLabel(f"Este PC: {profile['ram_gb']} GB de RAM · {profile['cores']} núcleos. Modelo local recomendado: {profile['local_model']} ({profile['tier']}).")
+        self.profile_info.setWordWrap(True); self.profile_info.setStyleSheet("color:#b6b3ca;font-size:12px"); box.addWidget(self.profile_info)
         box.addWidget(QLabel("Clave API de OpenRouter (solo para modo nube)"))
         self.entry=QLineEdit(current_key or read_key()); self.entry.setEchoMode(QLineEdit.EchoMode.Password); self.entry.setPlaceholderText("sk-or-v1-…"); box.addWidget(self.entry)
         self.show_key=QPushButton("Mostrar / ocultar clave"); self.show_key.setCheckable(True)
         self.show_key.toggled.connect(lambda shown:self.entry.setEchoMode(QLineEdit.EchoMode.Normal if shown else QLineEdit.EchoMode.Password)); box.addWidget(self.show_key)
-        link=QLabel('<a href="https://openrouter.ai/settings/keys">Gestionar clave de OpenRouter ↗</a>'); link.setOpenExternalLinks(True); box.addWidget(link)
+        link=QLabel('<a href="https://openrouter.ai/settings/keys">1. Crear / gestionar clave API ↗</a>'); link.setOpenExternalLinks(True); box.addWidget(link)
+        api_help=QLabel("2. Inicia sesión en OpenRouter y crea una key. 3. Cópiala completa aquí (suele empezar por sk-or-). 4. Pulsa «Comprobar y guardar». No la compartas ni la subas a GitHub. Puedes usar Automático sin clave si tienes un modelo local en Ollama.")
+        api_help.setWordWrap(True); api_help.setStyleSheet("color:#b6b3ca;font-size:12px"); box.addWidget(api_help)
         self.status=QLabel("La clave se almacena localmente. En modo local no se envían mensajes a OpenRouter.")
         self.status.setWordWrap(True); box.addWidget(self.status)
         row=QHBoxLayout(); cancel=QPushButton("Cancelar"); cancel.clicked.connect(self.reject); row.addWidget(cancel)
@@ -136,27 +177,46 @@ class SetupDialog(QDialog):
         self.setStyleSheet("QDialog{background:#171820;color:#eeeef8} QLabel{color:#eeeef8} QLineEdit,QComboBox{background:#242630;border:1px solid #48445f;border-radius:10px;padding:10px;color:#fff} QPushButton{background:#8875ee;color:white;border:0;border-radius:10px;padding:11px;font-weight:700} QPushButton:hover{background:#a092ff}")
         self.mode.currentIndexChanged.connect(self.update_mode); self.update_mode()
     def update_mode(self,*_):
-        cloud=self.mode.currentData()=="cloud"
+        mode=self.mode.currentData(); cloud=mode in ("cloud","auto")
         self.entry.setEnabled(cloud); self.show_key.setEnabled(cloud)
-        self.status.setText("Se usará OpenRouter; se necesita una clave válida." if cloud else "Ollama debe estar activo y tener el modelo seleccionado descargado. OpenChat no descargará modelos sin permiso.")
+        if mode=="auto": self.status.setText("Automático: prefiere OpenRouter si hay una clave válida; si falla, prueba el modelo local recomendado de Ollama. El estado del proveedor se mostrará en el chat.")
+        elif mode=="cloud": self.status.setText("Se usará OpenRouter; se necesita una clave válida.")
+        else:
+            self.status.setText("Se usará Ollama local. Selecciona abajo un modelo que ya esté instalado; no se descargarán modelos sin permiso.")
+            if self.model.currentText() not in (LOCAL, system_profile()["local_model"]): self.model.setCurrentText(self.settings.get("local_model",system_profile()["local_model"]))
     def verify(self):
-        mode=self.mode.currentData(); model=self.model.currentText().strip()
-        if not model: self.status.setText("Escribe el identificador del modelo."); return
+        mode=self.mode.currentData(); model=self.model.currentText().strip(); key=self.entry.text().strip()
+        if not model: self.status.setText("Escribe el identificador del modelo de OpenRouter."); return
         self.go.setEnabled(False); self.status.setText("Comprobando proveedor…")
         try:
-            if mode=="cloud":
-                key=self.entry.text().strip()
-                if not key: self.status.setText("Introduce una clave de OpenRouter."); return
+            if mode in ("cloud","auto") and key:
                 valid,msg=validate_key(key)
                 if not valid: self.status.setText(msg); return
                 save_key(key); self.key=key
+            elif mode=="cloud":
+                self.status.setText("Introduce una clave API válida de OpenRouter."); return
             else:
-                models=local_status()
-                if not models: self.status.setText("Ollama responde, pero no tiene modelos descargados."); return
-                if model not in models:
-                    self.status.setText("El modelo no está instalado en Ollama. Disponibles: "+", ".join(models)); return
                 self.key=""
-            self.settings={"mode":mode,"model":model,"setup_complete":True}
+            if mode=="local" or (mode=="auto" and not key):
+                models=local_status()
+                if not models:
+                    self.status.setText("No responde Ollama o no hay modelos. Inicia Ollama y descarga un modelo; o introduce una clave para usar la nube.")
+                    return
+                recommended=system_profile()["local_model"]
+                selected_local=recommended if recommended in models else models[0]
+                if mode=="local" and model not in models:
+                    self.status.setText("El modelo local elegido no está instalado. Disponibles: "+", ".join(models)); return
+            else:
+                selected_local=system_profile()["local_model"]
+                try:
+                    models=local_status()
+                    if selected_local not in models and models:
+                        selected_local=models[0]
+                except Exception:
+                    pass
+            cloud_model=model if mode!="local" else self.settings.get("model",MODEL)
+            if mode=="local": selected_local=model
+            self.settings={"mode":mode,"model":cloud_model,"local_model":selected_local,"setup_complete":True}
             save_settings(self.settings); self.accept()
         except requests.HTTPError as e:
             code=e.response.status_code if e.response is not None else "?"
@@ -166,38 +226,62 @@ class SetupDialog(QDialog):
         finally:
             self.go.setEnabled(True)
 
+
 class Worker(QObject):
     done=Signal(str,str); status=Signal(str)
-    def __init__(self,messages,key,mode,model):
-        super().__init__(); self.messages=messages; self.key=key; self.mode=mode; self.model=model
+    def __init__(self,messages,key,mode,model,local_model=None):
+        super().__init__(); self.messages=messages; self.key=key; self.mode=mode; self.model=model; self.local_model=local_model or system_profile()["local_model"]
+    def ask_local(self):
+        self.status.emit("Conectando con Ollama local · "+self.local_model)
+        r=requests.post("http://127.0.0.1:11434/api/chat",json={"model":self.local_model,"messages":self.messages,"stream":False},timeout=(2,120))
+        r.raise_for_status()
+        answer=r.json().get("message",{}).get("content","").strip()
+        if not answer: raise RuntimeError("Ollama no devolvió texto.")
+        return answer, "Ollama · local · "+self.local_model
+    def ask_cloud(self):
+        self.status.emit("Conectando con OpenRouter · "+self.model)
+        with requests.post("https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization":"Bearer "+self.key,"Content-Type":"application/json","HTTP-Referer":"https://github.com/openchat-oc/OpenChat","X-Title":"OpenChat"},
+            json={"model":self.model,"messages":self.messages,"temperature":0.6},timeout=(5,60)) as r:
+            r.raise_for_status(); answer=r.json()["choices"][0]["message"]["content"]
+        if isinstance(answer,list): answer="\\n".join(p.get("text","") for p in answer if isinstance(p,dict))
+        if not str(answer).strip(): raise RuntimeError("El modelo no devolvió texto.")
+        return str(answer).strip(), "OpenRouter · "+self.model
     def run(self):
+        if self.mode=="local":
+            try:
+                answer,source=self.ask_local(); self.done.emit(answer,source)
+            except Exception as e: self.done.emit("No se pudo obtener respuesta de Ollama.\\n\\n"+str(e),"Error")
+            return
+        if self.mode=="cloud":
+            try:
+                answer,source=self.ask_cloud(); self.done.emit(answer,source)
+            except requests.HTTPError as e:
+                code=e.response.status_code if e.response is not None else "?"
+                self.done.emit("OpenRouter devolvió HTTP "+str(code)+". Comprueba clave, modelo y cuota. No se ha cambiado de proveedor automáticamente.","Error")
+            except Exception as e: self.done.emit("No se pudo conectar con OpenRouter.\\n\\n"+str(e),"Error")
+            return
+        # Auto mode: cloud is preferred when a key exists; fallback is explicit in status/source.
+        if self.key:
+            try:
+                answer,source=self.ask_cloud(); self.done.emit(answer,source+" · automático"); return
+            except Exception as cloud_error:
+                self.status.emit("OpenRouter no está disponible; probando Ollama local…")
+                try:
+                    answer,source=self.ask_local()
+                    self.done.emit(answer,source+" · alternativa automática (OpenRouter falló)")
+                    return
+                except Exception as local_error:
+                    self.done.emit("Fallaron OpenRouter y Ollama.\\n\\nOpenRouter: "+str(cloud_error)+"\\nOllama: "+str(local_error)+"\\n\\nRevisa Ajustes y los modelos instalados.","Error")
+                    return
         try:
-            if self.mode=="local":
-                self.status.emit("Conectando con Ollama · "+self.model)
-                r=requests.post("http://127.0.0.1:11434/api/chat",json={"model":self.model,"messages":self.messages,"stream":False},timeout=(2,120))
-                r.raise_for_status()
-                answer=r.json().get("message",{}).get("content","").strip()
-                if not answer: raise RuntimeError("Ollama no devolvió texto.")
-                self.done.emit(answer,"Ollama · local · "+self.model); return
-            self.status.emit("Conectando con OpenRouter · "+self.model)
-            with requests.post("https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization":"Bearer "+self.key,"Content-Type":"application/json","HTTP-Referer":"https://github.com/openchat-oc/OpenChat","X-Title":"OpenChat"},
-                json={"model":self.model,"messages":self.messages,"temperature":0.6},timeout=(5,60)) as r:
-                r.raise_for_status(); answer=r.json()["choices"][0]["message"]["content"]
-            if isinstance(answer,list): answer="\\n".join(p.get("text","") for p in answer if isinstance(p,dict))
-            if not str(answer).strip(): raise RuntimeError("El modelo no devolvió texto.")
-            self.done.emit(str(answer).strip(),"OpenRouter · "+self.model)
-        except requests.HTTPError as e:
-            code=e.response.status_code if e.response is not None else "?"
-            self.done.emit("El proveedor devolvió HTTP "+str(code)+". Comprueba la clave, el modelo y los límites de uso. No se ha cambiado de proveedor automáticamente.","Error")
+            answer,source=self.ask_local(); self.done.emit(answer,source+" · automático (sin clave de nube)")
         except Exception as e:
-            provider="Ollama" if self.mode=="local" else "OpenRouter"
-            self.done.emit("No se pudo obtener respuesta de "+provider+".\\n\\n"+str(e)+"\\n\\nOpenChat mantiene el proveedor seleccionado; revisa Ajustes o vuelve a intentarlo.","Error")
-
+            self.done.emit("El modo automático no tiene clave de OpenRouter y Ollama no está disponible.\\n\\n"+str(e)+"\\n\\nAbre Ajustes para añadir una clave o inicia Ollama con un modelo instalado.","Error")
 
 class MainWindow(QMainWindow):
     def __init__(self,key,settings=None):
-        super().__init__(); self.key=key; self.settings=settings or load_settings(); self.mode=self.settings.get("mode","cloud"); self.selected_model=self.settings.get("model",MODEL); self.setWindowTitle("OpenChat"); self.setWindowIcon(QIcon(str(Path(__file__).with_name("logo.svg")))); self.resize(1000,740); self.setMinimumSize(650,520)
+        super().__init__(); self.key=key; self.settings=settings or load_settings(); self.mode=self.settings.get("mode","auto"); self.selected_model=self.settings.get("model",MODEL); self.local_model=self.settings.get("local_model",system_profile()["local_model"]); self.setWindowTitle("OpenChat"); self.setWindowIcon(QIcon(str(Path(__file__).with_name("logo.svg")))); self.resize(1000,740); self.setMinimumSize(650,520)
         self.thread=None; self.worker=None; self.last_answer=""; self.generated_files={}; self.typing_dots=0; self.typing_row=None; self.intro_phase=False
         self.messages=[{"role":"system","content":"""Eres OpenChat, la IA. Chispa es únicamente tu mascota, no la IA. Responde en el idioma del usuario y sé útil, claro y preciso.
 Cuando el usuario solicite crear uno o varios archivos, genera el contenido completo y envuelve CADA archivo en este formato exacto:
@@ -210,12 +294,13 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         header=QWidget(); header.setObjectName("header"); row=QHBoxLayout(header); row.setContentsMargins(24,16,24,16); row.setSpacing(12)
         brand_icon=QLabel("✦"); brand_icon.setFixedSize(44,44); brand_icon.setAlignment(Qt.AlignmentFlag.AlignCenter); brand_icon.setStyleSheet("font-size:27px;color:white;background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #9d83f6,stop:1 #25c7e8);border-radius:15px"); row.addWidget(brand_icon)
         titles=QVBoxLayout(); brand=QLabel("OpenChat"); brand.setStyleSheet("font-size:22px;font-weight:800"); sub=QLabel("Tu espacio para pensar y crear"); sub.setStyleSheet("font-size:11px;color:#9b9db2"); titles.addWidget(brand); titles.addWidget(sub); row.addLayout(titles); row.addStretch()
-        self.model=QLabel("●  "+("OpenRouter · "+self.selected_model if self.mode=="cloud" else "Ollama local · "+self.selected_model)); self.model.setStyleSheet("color:#86e0bd;font-size:12px"); row.addWidget(self.model)
+        self.model=QLabel("●  "+("Automático · "+self.selected_model if self.mode=="auto" else ("OpenRouter · "+self.selected_model if self.mode=="cloud" else "Ollama local · "+self.local_model))); self.model.setStyleSheet("color:#86e0bd;font-size:12px"); row.addWidget(self.model)
         self.update_btn=QPushButton("↻  Actualizaciones"); self.update_btn.clicked.connect(self.check_updates); row.addWidget(self.update_btn)
+        self.agent_btn=QPushButton("⚡  Agente PC"); self.agent_btn.setToolTip("Abrir Open Interpreter para ejecutar una tarea real con confirmación"); self.agent_btn.clicked.connect(self.launch_pc_agent); row.addWidget(self.agent_btn)
         gear=QPushButton("⚙  Ajustes"); gear.clicked.connect(self.configure); row.addWidget(gear); outer.addWidget(header)
         hero=QWidget(); hero.setObjectName("hero"); hr=QHBoxLayout(hero); hr.setContentsMargins(22,14,22,14)
         pet=QLabel("◕ᴗ◕"); pet.setAlignment(Qt.AlignmentFlag.AlignCenter); pet.setFixedSize(58,58); pet.setStyleSheet("font-size:22px;font-weight:800;color:#c9c0ff;background:#29233e;border:1px solid #554a7e;border-radius:20px"); hr.addWidget(pet)
-        hv=QVBoxLayout(); ht=QLabel("Chispa está contigo"); ht.setStyleSheet("font-size:15px;font-weight:700;color:#e3dcff"); hd=QLabel("Pregunta, programa, crea ideas o prepara contenido para guardar como archivo."); hd.setWordWrap(True); hd.setStyleSheet("font-size:12px;color:#b6b3ca"); hv.addWidget(ht); hv.addWidget(hd); hr.addLayout(hv,1); outer.addWidget(hero)
+        hv=QVBoxLayout(); ht=QLabel("Chispa está contigo"); ht.setStyleSheet("font-size:15px;font-weight:700;color:#e3dcff"); hd=QLabel("Pregunta, crea archivos o usa ⚡ Agente PC para pedirle a Open Interpreter que trabaje en tu ordenador con confirmación antes de ejecutar acciones."); hd.setWordWrap(True); hd.setStyleSheet("font-size:12px;color:#b6b3ca"); hv.addWidget(ht); hv.addWidget(hd); hr.addLayout(hv,1); outer.addWidget(hero)
         self.scroll=QScrollArea(); self.scroll.setWidgetResizable(True); self.scroll.setFrameShape(QScrollArea.Shape.NoFrame); self.scroll.setObjectName("scroll")
         self.chat=QWidget(); self.chat.setObjectName("chat"); self.chatbox=QVBoxLayout(self.chat); self.chatbox.setContentsMargins(28,26,28,26); self.chatbox.setSpacing(18); self.chatbox.addStretch(); self.scroll.setWidget(self.chat); outer.addWidget(self.scroll,1)
         bottom=QWidget(); bottom.setObjectName("bottom"); b=QVBoxLayout(bottom); b.setContentsMargins(24,12,24,20); b.setSpacing(10)
@@ -327,11 +412,24 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         if not path: return
         try: Path(path).write_text(self.last_answer,encoding="utf-8"); self.status.setText("Archivo guardado: "+Path(path).name)
         except OSError as e: QMessageBox.critical(self,"Error al guardar",str(e))
+    def launch_pc_agent(self):
+        suggested=self.input.toPlainText().strip()
+        task,ok=QInputDialog.getMultiLineText(
+            self,"Agente de escritorio · Open Interpreter",
+            "Describe la tarea que quieres que realice en este PC. Se abrirá una terminal y Open Interpreter pedirá aprobación antes de ejecutar código.",
+            suggested)
+        if not ok or not task.strip(): return
+        try:
+            launch_agent(task, self.key if self.mode in ("auto","cloud") else "", self.selected_model)
+            self.status.setText("Agente de escritorio abierto en una terminal · revisa y aprueba cada acción.")
+        except (OSError,RuntimeError,ValueError) as e:
+            QMessageBox.warning(self,"No se pudo abrir el agente",str(e))
+            self.status.setText("El agente no se ha iniciado.")
     def configure(self):
         d=SetupDialog(self.settings,self.key)
         if d.exec()==QDialog.DialogCode.Accepted:
-            self.key=d.key; self.settings=d.settings; self.mode=self.settings["mode"]; self.selected_model=self.settings["model"]
-            self.model.setText("●  "+("OpenRouter · "+self.selected_model if self.mode=="cloud" else "Ollama local · "+self.selected_model))
+            self.key=d.key; self.settings=d.settings; self.mode=self.settings["mode"]; self.selected_model=self.settings["model"]; self.local_model=self.settings.get("local_model",system_profile()["local_model"])
+            self.model.setText("●  "+("Automático · "+self.selected_model if self.mode=="auto" else ("OpenRouter · "+self.selected_model if self.mode=="cloud" else "Ollama local · "+self.local_model)))
             self.status.setText("Configuración guardada.")
     def send_message(self):
         text=self.input.toPlainText().strip()
@@ -341,7 +439,7 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         self.send.setEnabled(False); self.status.setText("OpenChat está pensando"); self.show_typing()
         # Keep the system prompt plus a bounded recent context; full recent history stays on disk.
         context=[self.messages[0]]+self.messages[-30:]
-        self.thread=QThread(self); self.worker=Worker(context,self.key,self.mode,self.selected_model); self.worker.moveToThread(self.thread)
+        self.thread=QThread(self); self.worker=Worker(context,self.key,self.mode,self.selected_model,self.local_model); self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run); self.worker.status.connect(self.status.setText); self.worker.done.connect(self.answer); self.worker.done.connect(self.thread.quit); self.thread.finished.connect(self.cleanup); self.thread.start()
     def answer(self,text,source):
         self.hide_typing(); self.last_answer=text

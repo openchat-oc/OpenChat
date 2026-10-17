@@ -1,4 +1,11 @@
 $ErrorActionPreference = "Stop"
+$LocalModel = "qwen2.5:1.5b"
+try {
+    $RamGB = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
+    $CoreCount = (Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum
+    if ($RamGB -lt 6 -or $CoreCount -le 2) { $LocalModel = "qwen2.5:0.5b" }
+    elseif ($RamGB -gt 10) { $LocalModel = "qwen2.5:3b" }
+} catch { Write-Host "No pude detectar la RAM; usaré el modelo conservador qwen2.5:1.5b." -ForegroundColor Yellow }
 $AppDir = Join-Path $HOME "OpenChat"
 $Desktop = [Environment]::GetFolderPath("Desktop")
 function Ensure-Command($Name, $WingetId) {
@@ -74,9 +81,10 @@ if (-not (Test-OllamaApi)) {
     }
     if (-not $ready) { throw "Ollama se instaló pero no responde en localhost:11434. Abre Ollama desde Inicio y repite el instalador." }
 }
-Write-Host "Descargando el modelo local qwen2.5:1.5b (alrededor de 1 GB o más)..." -ForegroundColor Cyan
-& $OllamaExe pull qwen2.5:1.5b
-if ($LASTEXITCODE -ne 0) { throw "No se pudo descargar qwen2.5:1.5b. Ejecuta: ollama pull qwen2.5:1.5b" }
+Write-Host "Este PC recomienda el modelo local $LocalModel según su RAM y procesador." -ForegroundColor Cyan
+Write-Host "Descargando $LocalModel (puede ocupar varios GB según el modelo)..." -ForegroundColor Cyan
+& $OllamaExe pull $LocalModel
+if ($LASTEXITCODE -ne 0) { throw "No se pudo descargar $LocalModel. Ejecuta: ollama pull $LocalModel" }
 Write-Host "OpenChat, Ollama y el modelo local están preparados." -ForegroundColor Green
     Write-Host "Abrir: $Desktop\\OpenChat.cmd"
     Write-Host "Desinstalar: $Desktop\\Desinstalar OpenChat.cmd"
