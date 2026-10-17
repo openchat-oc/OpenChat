@@ -2,90 +2,75 @@
 
 ![Logo de OpenChat](app/logo.svg)
 
-**OpenChat** es un asistente de IA de escritorio para Linux y Windows. Conversa, explica, programa, crea y edita archivos y, si lo activas, trabaja sobre un proyecto con herramientas y **con tu permiso**. Puedes usar modelos en la **nube (OpenRouter)** o **locales (Ollama)**. OpenChat nunca cambia de proveedor en silencio.
+Asistente de IA de escritorio para Linux y Windows. Permite elegir OpenRouter (nube) u Ollama (local); OpenChat no cambia de proveedor en silencio.
 
-**Chispa** es la mascota de OpenChat (la ves en la configuración, en los estados vacíos y mientras «OpenChat está pensando»). Chispa **no** es la IA ni el nombre del asistente.
+## Incluye
+- Interfaz de chat de escritorio con icono propio.
+- Configuración de clave OpenRouter desde la app; la clave se guarda solo en el equipo.
+- Modelo en la nube: \`poolside/laguna-s-2.1:free\`.
+- IA local: Ollama con \`qwen2.5:1.5b\`.
+- Instaladores para Linux y Windows. Ollama y el modelo local son opcionales para no descargar gigabytes sin permiso.
+- Desinstalador de OpenChat. Ollama y su modelo se conservan al desinstalar la app.
+- No necesita GitHub Releases.
 
-## Instalación
+## Linux (CachyOS, Arch, Debian, Ubuntu, Fedora, openSUSE)
 
-**Linux (CachyOS/Arch, Debian/Ubuntu, Fedora, openSUSE):**
+Ejecuta:
 
     curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | sh
 
-**Windows 10/11 (PowerShell):**
+El instalador comprueba Python y Git, configura un entorno virtual, instala las dependencias de la interfaz, instala Ollama si falta, inicia el servicio e intenta descargar \`qwen2.5:1.5b\`. Necesitas conexión a Internet y espacio libre para el modelo; la instalación puede tardar.
+
+Para desinstalar solo OpenChat:
+
+    ~/.local/bin/openchat-uninstall
+
+Puedes conservar o borrar la clave y configuración. No elimina Ollama ni el modelo.
+
+## Windows
+
+Abre PowerShell y ejecuta:
 
     irm https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.ps1 | iex
 
-Los instaladores comprueban lo que ya tienes e instalan solo lo que falta (Python 3.9+, Git, bibliotecas de Qt), crean un entorno virtual aislado, comprueban que Qt arranca, y pueden ejecutarse de nuevo sin perder tu configuración. Piden permisos de administrador únicamente para instalar paquetes del sistema y te dicen por qué.
+El instalador usa winget para instalar Python, Git y Ollama si faltan; configura el entorno virtual e intenta descargar \`qwen2.5:1.5b\`.
 
-**IA local (opcional).** Por defecto **no** se instala Ollama ni se descarga ningún modelo. Para incluirlos:
+Para desinstalar OpenChat, ejecuta \`Desinstalar OpenChat.cmd\` desde el Escritorio. Ollama y el modelo local se conservan.
 
-    curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | env OPENCHAT_INSTALL_OLLAMA=1 sh
+## Primera ejecución
 
-(En Windows: `$env:OPENCHAT_INSTALL_OLLAMA = "1"` antes del comando.) Modelo local por defecto: `qwen2.5:1.5b` (≈1 GB o más); cámbialo con `OPENCHAT_MODEL`. En Arch/CachyOS, Ollama se instala con `pacman`; en otras distribuciones se usa el instalador oficial de Ollama (script remoto que **no** puedo auditar por ti).
+1. Abre OpenChat desde el menú de aplicaciones (Linux) o \`OpenChat.cmd\` (Windows).
+2. Para usar Laguna, crea una clave en https://openrouter.ai/settings/keys y añádela desde el botón de configuración.
+3. La IA local Ollama queda preparada durante la instalación y puede usarse sin clave.
+4. Para activar también Laguna en la nube, crea una clave de OpenRouter y añádela desde ⚙. La clave no se puede generar automáticamente y puede estar sujeta a límites o condiciones del proveedor.
+5. Al terminar la instalación, OpenChat se abre automáticamente.
 
-Variables útiles: `OPENCHAT_ASSUME_YES=1` (sin preguntas), `OPENCHAT_BRANCH`, `OPENCHAT_REPO`.
+La clave API no debe publicarse ni guardarse en el repositorio. Las conversaciones enviadas a OpenRouter salen hacia ese servicio; el modo Ollama usa el servicio local.
 
-**Desinstalar:** `openchat-uninstall` (Linux) o el acceso «Desinstalar OpenChat» del escritorio (Windows). Elimina la aplicación y conserva Ollama, sus modelos y los paquetes del sistema. Pregunta **por separado** si quieres borrar la clave/configuración y el historial.
+## Ejecutar desde el código
 
-**Desde el código:**
-
-    python -m venv .venv && . .venv/bin/activate    # Windows: .venv\Scripts\activate
     python -m pip install -r requirements.txt
     python -m app.main
 
-## Primer arranque
 
-Un asistente guiado (con Chispa) te lleva paso a paso: **nube** (OpenRouter) o **local** (Ollama).
+## Funcionalidad y limitaciones
 
-- **Nube:** pega tu clave de OpenRouter (con botón para mostrar/ocultar), pulsa *Comprobar conexión* —se hace una consulta real, no solo se valida el formato— y elige modelo (la lista se carga en vivo desde OpenRouter). No avanza hasta que la comprobación funcione.
-- **Local:** detecta Ollama y los modelos instalados, explica cómo instalarlo si falta y puede descargar un modelo con barra de progreso y botón de cancelar. Instalar Ollama no basta: hace falta un modelo descargado.
+- El asistente de configuración permite seleccionar nube o local y persiste el proveedor y el modelo elegidos.
+- La conversación usa el proveedor seleccionado sin fallback silencioso.
+- El guardado de archivos generados comprueba los nombres, evita sobrescrituras no autorizadas y verifica la escritura.
+- El historial persistente, el modo agente con herramientas, el streaming/cancelación y el actualizador transaccional todavía no están implementados como funciones completas. El botón de actualización comprueba el repositorio Git local y no instala automáticamente una actualización.
 
-Puedes cambiar de motor y de modelo en la barra lateral y repetir el asistente desde *Ajustes*. Si falta la clave o desaparece el modelo, OpenChat te lo explica y te ofrece configurarlo; no se bloquea.
+## Pruebas automatizadas
 
-## Qué hace
+Desde la raíz del repositorio, con Python instalado, ejecuta:
 
-- **Chat** con streaming, botón *Detener* (o `Esc`), historial persistente (renombrar, eliminar, continuar), bloques de código copiables y enlaces seguros. El texto que escribes no se pierde si hay un error. `Intro` envía, `Mayús+Intro` salta de línea, y puedes empezar a escribir sin hacer clic en la caja.
-- **Archivos:** si pides un archivo, OpenChat lo prepara en un panel (vista previa y edición), lo guarda donde elijas, **verifica lo escrito**, no sobrescribe sin preguntar y nunca ejecuta lo generado.
-- **Modo agente** (desactivado por defecto): el modelo propone herramientas (leer/buscar/editar/crear archivos, ejecutar pruebas y comandos) y OpenChat valida, comprueba permisos, ejecuta y devuelve el resultado real. Ver *Permisos*.
-- **Actualizaciones:** comprueba el archivo `VERSION` de `main` en GitHub (o, si no existe, compara commits con `git`). Distingue «actualizado», «hay actualización» y «no se pudo comprobar». Actualizar ejecuta `git pull --ff-only` solo con el árbol limpio; tu configuración e historial no se tocan.
+    python -m unittest discover -s tests -v
 
-## Permisos del modo agente
+Las pruebas añadidas cubren la validación de nombres de archivo, la escritura UTF-8, la protección frente a sobrescrituras accidentales y la sustitución explícita de archivos existentes. No sustituyen las pruebas de interfaz gráfica ni las pruebas reales contra OpenRouter u Ollama.
 
-| Acción | Comportamiento |
-|---|---|
-| Leer, listar, buscar dentro del espacio de trabajo | Automático. Archivos sensibles (`.env`, `*.pem`, `id_rsa`…) piden confirmación porque su contenido se enviaría al modelo |
-| Crear/editar archivos | Pregunta (o automático si eliges «permitir ediciones» en Ajustes) |
-| Borrar archivos | Siempre pregunta |
-| Ejecutar comandos | Sin shell, con tiempo límite y entorno sin claves. Pruebas/`git status` pueden ser automáticos; el resto pregunta |
-| Instalar software (`pip`, `npm`, `pacman`, `winget`…) | Siempre pregunta |
-| `sudo`, `rm`, `dd`, shells, rutas fuera del espacio de trabajo | **Bloqueado** |
+## Guardado seguro de archivos
 
-Límites: 12 pasos, 15 minutos, detección de bucles, cancelable en cualquier momento. El contenido de archivos y los resultados de herramientas se tratan como **datos**, no como instrucciones.
-
-## Privacidad
-
-- **Nube:** tus mensajes (y, en modo agente, el contenido de los archivos que el agente lea) se envían a OpenRouter y al modelo elegido. **Local:** todo se queda en tu equipo (`127.0.0.1:11434`).
-- Datos personales en `~/.config/openchat` (configuración, historial SQLite, registro), fuera del repositorio. La **clave de OpenRouter** se guarda en el llavero del sistema si existe; si no, en un archivo con permisos `600` (en Windows los permisos POSIX no se aplican: se protege con la cuenta de usuario). Los registros y errores ocultan las claves.
-- Nada se sube a GitHub automáticamente. No hay telemetría. La única consulta de red propia es la comprobación de actualizaciones (se desactiva en Ajustes).
-
-## Pruebas
-
-    python -m pip install -r requirements-dev.txt
-    python -m pytest -q
-
-Cubren: configuración y secretos, historial y migración desde la versión anterior, rutas y guardado de archivos, proveedores contra servidores HTTP locales que imitan OpenRouter (SSE) y Ollama, el agente y su política de permisos, el actualizador (incluido `git` real), el asistente de configuración y la ventana principal con Qt *offscreen* (teclado, streaming, cancelar, errores, archivos).
-
-## Limitaciones conocidas
-
-- El llavero del sistema solo se probó con un llavero simulado (en este entorno no hay uno real); la ruta del archivo privado sí se probó de verdad.
-- **No se ha probado** contra OpenRouter real ni con un modelo de Ollama real (se usan servidores simulados); depende de que esos servicios mantengan su API.
-- Instalador de **Windows**: su sintaxis está validada, pero no se ha ejecutado en Windows. Instalador de **Linux**: ejecutado de verdad en Ubuntu; la detección de CachyOS/Arch se probó con un `pacman` simulado y los nombres de paquetes de Arch/Fedora/openSUSE no se han verificado en esas distribuciones.
-- La interfaz se ha probado en modo *offscreen*; falta revisarla a mano en Wayland/KDE y en Windows (foco, diálogos del sistema, escalado).
-- La IA no «recuerda» entre conversaciones: solo ve la conversación abierta, recortada a ~24 000 caracteres (OpenChat te avisa cuando recorta). No hay resúmenes automáticos.
-- El agente usa un protocolo de herramientas en texto, así que depende de que el modelo lo respete; los modelos pequeños pueden fallar.
-- La actualización no verifica firmas: confía en `git` sobre HTTPS desde el repositorio. No hay instaladores firmados.
-- Respaldo automático a Ollama: existe pero está **desactivado por defecto** y avisa en el chat cuando se usa.
+Los archivos generados se guardan en la carpeta que elijas. OpenChat rechaza nombres que contengan rutas o nombres especiales, comprueba el contenido escrito y pide confirmación antes de sobrescribir archivos existentes. La ejecución de los archivos generados no es automática.
 
 ## Licencia
 

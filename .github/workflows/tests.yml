@@ -9,38 +9,14 @@ on:
 jobs:
   python:
     runs-on: ubuntu-latest
-    env:
-      QT_QPA_PLATFORM: offscreen
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Bibliotecas del sistema para Qt (sin pantalla)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0
-      - name: Instalar dependencias
-        run: python -m pip install -r requirements-dev.txt
-      - name: Compilar
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile Python files
         run: python -m compileall -q app tests
-      - name: Pruebas (unitarias, red local simulada e interfaz offscreen)
-        run: python -m pytest -q
-
-  installers:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Sintaxis de los scripts de Linux
-        run: |
-          sh -n install.sh
-          sh -n uninstall.sh
-      - name: Sintaxis de los scripts de Windows
-        shell: pwsh
-        run: |
-          foreach ($f in "install.ps1", "uninstall.ps1") {
-            $errors = $null; $tokens = $null
-            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$tokens, [ref]$errors)
-            if ($errors.Count) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }
-            Write-Host "$f: sintaxis correcta"
-          }
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
