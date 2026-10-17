@@ -95,7 +95,7 @@ Icon=edit-delete
 Terminal=true
 Categories=Utility;
 EOF
-if [ "${OPENCHAT_INSTALL_OLLAMA:-0}" = "1" ]; then
+if true; then
   say "Preparando la IA local Ollama…"
   if ! has ollama; then
     if ! curl -fsSL https://ollama.com/install.sh | sh; then
@@ -116,10 +116,14 @@ if [ "${OPENCHAT_INSTALL_OLLAMA:-0}" = "1" ]; then
   curl -fsS --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 || fail "Ollama está instalado pero no responde en localhost:11434."
   say "Descargando el modelo local $MODEL (puede ocupar alrededor de 1 GB o más)…"
   ollama pull "$MODEL" || fail "Ollama funciona, pero no se pudo descargar $MODEL. Repite: ollama pull $MODEL"
-else
-  say "Instalación nube preparada. Ollama y el modelo local se omiten para ahorrar espacio."
-  say "Para incluir Ollama, ejecuta de nuevo: curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | env OPENCHAT_INSTALL_OLLAMA=1 sh"
 fi
+say "Preparando Open Interpreter para tareas de archivos TXT…"
+OI_DIR="$HOME/.local/share/openchat-interpreter"
+if [ ! -x "$OI_DIR/bin/python" ]; then
+  python3 -m venv "$OI_DIR" || fail "No se pudo crear el entorno de Open Interpreter."
+fi
+"$OI_DIR/bin/python" -m pip install --upgrade pip
+"$OI_DIR/bin/python" -m pip install open-interpreter || fail "OpenChat se instaló, pero Open Interpreter no pudo instalarse. Puedes reintentar con: $OI_DIR/bin/python -m pip install open-interpreter"
 say "Instalación de OpenChat completada."
 say "Iniciar: $BIN/openchat"
 say "Desinstalar OpenChat: $BIN/openchat-uninstall"
