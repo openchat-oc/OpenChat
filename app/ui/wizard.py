@@ -291,7 +291,8 @@ class SetupWizard(QDialog):
 
     def _finish(self) -> None:
         if self.r_cloud.isChecked():
-            where = config.set_api_key(self.key_verified) if self.key_verified and self.key_verified != config.get_api_key() else ""
+            if self.key_verified and self.key_verified != config.get_api_key():
+                config.set_api_key(self.key_verified)
             self.s.update(mode="cloud", cloud_model=self.model_combo.currentText().strip() or config.DEFAULT_CLOUD_MODEL,
                           fallback_to_local=self.fb_check.isChecked(), setup_done=True)
         else:

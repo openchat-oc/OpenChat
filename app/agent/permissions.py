@@ -1,7 +1,6 @@
 """Política de permisos del agente. El modelo propone; esta capa decide."""
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
 from pathlib import Path

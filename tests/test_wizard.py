@@ -1,18 +1,13 @@
 """Asistente de configuración contra servidores falsos (OpenRouter y Ollama) con Qt offscreen."""
-import json
-import time
 
 import pytest
-from PySide6.QtCore import QEvent
-from PySide6.QtWidgets import QApplication
 
 import app.ui.wizard as wz
 from app import config
 from app.providers import OllamaProvider, OpenRouterProvider
-from app.ui.theme import QSS
 from tests.fakeserver import make_server, send_json
 from tests.test_providers import KEY, ollama_routes
-from tests.test_ui import close_windows, pump, qapp  # noqa: F401  (fixtures compartidas)
+from tests.conftest import pump
 
 
 @pytest.fixture

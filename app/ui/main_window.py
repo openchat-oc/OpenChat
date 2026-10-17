@@ -6,13 +6,13 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, Qt, QTimer
-from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QAbstractSpinBox, QApplication, QComboBox, QDialog, QFileDialog, QFrame, QHBoxLayout,
                                QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMenu,
                                QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QTextEdit, QVBoxLayout, QWidget)
 
 from .. import REPO_URL, __version__, config, updater
-from ..agent.loop import AGENT_SYSTEM, CHAT_SYSTEM
+from ..agent.loop import CHAT_SYSTEM
 from ..conversations import ConversationStore, auto_title, build_context, import_legacy_history
 from ..fileops import GeneratedFile, extract_files, save_text, strip_file_blocks, unique_path
 from ..providers import OllamaProvider, OpenRouterProvider
@@ -408,7 +408,6 @@ class MainWindow(QMainWindow):
         self._last_user_bubble = self._add_bubble("user", text)
         provider, model, label = self.provider_and_model()
         agent = self.s["agent_enabled"]
-        system = AGENT_SYSTEM if agent else CHAT_SYSTEM
         msgs, trimmed = build_context(CHAT_SYSTEM if not agent else "", self.history)
         fb = None
         if self.s["fallback_to_local"] and self.s["mode"] == "cloud" and not agent:

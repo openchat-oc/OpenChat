@@ -2,16 +2,15 @@
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QObject, Signal
 
 from ..agent import AgentRunner, PermissionPolicy, ToolContext
-from ..agent.loop import CHAT_SYSTEM
 from ..config import redact
-from ..providers import CancelToken, Cancelled, OllamaProvider, Provider, ProviderError
+from ..providers import CancelToken, Cancelled, Provider, ProviderError
 
 
 class _Bridge(QObject):
@@ -23,7 +22,6 @@ def run_async(fn: Callable[[], object], on_ok: Callable[[object], None], on_err:
               parent: QObject | None = None) -> None:
     """Ejecuta ``fn`` en un hilo y entrega el resultado en el hilo de la interfaz."""
     bridge = _Bridge(parent)
-    keep = bridge  # noqa: F841 - mantiene viva la referencia hasta terminar
     bridge.ok.connect(lambda v: (on_ok(v), bridge.deleteLater()))
     bridge.err.connect(lambda e: ((on_err(e) if on_err else None), bridge.deleteLater()))
 
@@ -84,7 +82,6 @@ class GenerationWorker(QObject):
 
     # --------------------------------------------------------------
     def _run(self) -> None:
-        partial = ""
         try:
             if self.req.agent:
                 self._run_agent()

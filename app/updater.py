@@ -9,7 +9,7 @@ from typing import Callable
 
 import requests
 
-from . import REPO_URL, __version__
+from . import __version__
 
 VERSION_URL = "https://raw.githubusercontent.com/openchat-oc/OpenChat/main/VERSION"
 UP_TO_DATE, AVAILABLE, ERROR = "up_to_date", "available", "error"

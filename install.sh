@@ -26,7 +26,7 @@ has(){ command -v "$1" >/dev/null 2>&1; }
 # Pregunta sí/no. Sin terminal y sin OPENCHAT_ASSUME_YES devuelve «no» (nunca decide por ti).
 ask(){
   [ "${OPENCHAT_ASSUME_YES:-0}" = "1" ] && return 0
-  if [ -r /dev/tty ] && [ -w /dev/tty ]; then
+  if ( : </dev/tty ) 2>/dev/null; then
     printf '%s [s/N] ' "$1" >/dev/tty; read ans </dev/tty || ans=""
     case "$ans" in s|S|si|SI|sí|y|Y|yes) return 0 ;; esac
   fi

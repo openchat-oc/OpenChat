@@ -1,13 +1,12 @@
 import json
 import sys
-from pathlib import Path
 
 import pytest
 
 from app.agent import AgentRunner, PermissionPolicy, ToolContext, build_registry, parse_tool_calls
 from app.agent.permissions import ALLOW, ASK, DENY
 from app.agent.tools import ToolError, validate_args
-from app.providers.base import CancelToken, Provider
+from app.providers.base import Provider
 
 
 class Scripted(Provider):
@@ -116,7 +115,7 @@ def test_agent_edits_file_after_permission_and_runs_tests(ws):
 
 def test_denied_permission_does_not_touch_the_file(ws):
     r, asked, _ = runner(ws, [tool("write_file", path="nuevo.txt", content="x"), "No pude escribirlo."], answer="deny")
-    result = r.run([{"role": "user", "content": "crea nuevo.txt"}])
+    r.run([{"role": "user", "content": "crea nuevo.txt"}])
     assert not (ws / "nuevo.txt").exists() and "denegó" in "\n".join(r.provider.calls[-1])
 
 

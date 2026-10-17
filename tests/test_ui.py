@@ -1,11 +1,9 @@
 """Pruebas de interfaz con Qt «offscreen» y un servidor Ollama falso real (sin mocks de widgets)."""
 import json
 import time
-from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QEvent, Qt
-from PySide6.QtGui import QKeyEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QLineEdit
 
@@ -13,35 +11,10 @@ import app.ui.main_window as mw
 from app import config
 from app.providers import OllamaProvider
 from app.ui.chispa import ChispaWidget
-from app.ui.theme import QSS
-from app.ui.widgets import THINKING, ChatInput, MessageBubble
+from app.ui.widgets import THINKING, MessageBubble
+from tests.conftest import pump
 from tests.fakeserver import make_server, send_json
 
-
-
-@pytest.fixture(scope="session")
-def qapp():
-    app = QApplication.instance() or QApplication([])
-    app.setStyleSheet(QSS)
-    return app
-
-
-@pytest.fixture(autouse=True)
-def close_windows(qapp):
-    yield
-    for w in qapp.topLevelWidgets():
-        w.close(); w.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
-
-
-def pump(qapp, cond, timeout=6.0):
-    end = time.time() + timeout
-    while time.time() < end:
-        qapp.processEvents()
-        if cond():
-            return True
-        time.sleep(0.01)
-    return False
 
 
 class FakeOllama:
@@ -245,10 +218,6 @@ def test_agent_mode_edits_project_with_permission_dialog(qapp, window, monkeypat
     calls = [f'<openchat-tool name="edit_file">{json.dumps({"path": "a.txt", "old": "viejo", "new": "nuevo"})}</openchat-tool>', "Hecho: cambié a.txt."]
     w = window(agent_enabled=True)
     w._test_fake.reply = calls[0]
-    # el servidor devuelve primero la herramienta y luego el resumen final
-    seq = iter(calls)
-    orig = w._test_fake.srv.RequestHandlerClass
-    import app.agent.permissions as perms
     asked = []
     monkeypatch.setattr(mw.PermissionDialog, "exec", lambda self: (asked.append(self.windowTitle()), setattr(self, "answer", "once"))[0])
     # sustituimos el proveedor por uno guionizado para controlar los dos turnos

@@ -48,7 +48,8 @@ def test_git_commit_comparison(tmp_path):
     (origin / "f").write_text("2"); g("-C", str(origin), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "2")
     assert updater.check_for_update(nf, "1.1.0", root=clone).state == updater.AVAILABLE
     ok, msg = updater.apply_update(clone)
-    assert ok and (clone / "f").read_text() == "2" or "pip" in msg
+    assert ok, msg
+    assert (clone / "f").read_text() == "2"
 
 
 def test_apply_update_refuses_with_local_changes(tmp_path):

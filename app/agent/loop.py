@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable
 
-from ..providers.base import Cancelled, CancelToken, Provider, ProviderError
+from ..providers.base import Cancelled, CancelToken, Provider
 from .permissions import ALLOW, DENY, PermissionPolicy
 from .tools import ToolContext, ToolError, ToolResult, ToolSpec, build_registry, clip, describe_tools, validate_args
 

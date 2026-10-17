@@ -1,7 +1,6 @@
 import json
 import os
 import stat
-import sqlite3
 
 import pytest
 
@@ -49,7 +48,6 @@ def test_redact_hides_keys_everywhere():
     text = f"fallo con Authorization: Bearer {key} y clave {key}"
     out = cfg.redact(text)
     assert "SECRETSECRET" not in out and "[clave oculta]" in out
-    assert "SECRET" not in cfg.redact("otra: abcdefgh12345678", extra=("abcdefgh12345678",)) or True
     assert "abcdefgh12345678" not in cfg.redact("otra: abcdefgh12345678", extra=("abcdefgh12345678",))
 
 

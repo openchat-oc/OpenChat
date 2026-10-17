@@ -59,12 +59,12 @@ QCheckBox {{ spacing: 8px; }}
 QToolTip {{ background: {SURFACE2}; color: {TEXT}; border: 1px solid {BORDER}; }}
 """
 
-QSS += f"""
-QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
-QScrollBar::handle:vertical {{ background: #3a3d4e; border-radius: 4px; min-height: 36px; }}
-QScrollBar::handle:vertical:hover {{ background: #55597a; }}
-QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px; }}
-QScrollBar::handle:horizontal {{ background: #3a3d4e; border-radius: 4px; min-width: 36px; }}
-QScrollBar::add-line, QScrollBar::sub-line {{ width: 0; height: 0; }}
-QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
+QSS += """
+QScrollBar:vertical { background: transparent; width: 10px; margin: 2px; }
+QScrollBar::handle:vertical { background: #3a3d4e; border-radius: 4px; min-height: 36px; }
+QScrollBar::handle:vertical:hover { background: #55597a; }
+QScrollBar:horizontal { background: transparent; height: 10px; margin: 2px; }
+QScrollBar::handle:horizontal { background: #3a3d4e; border-radius: 4px; min-width: 36px; }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
 """

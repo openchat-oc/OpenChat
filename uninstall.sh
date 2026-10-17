@@ -5,7 +5,7 @@ APP="$HOME/OpenChat"
 DATA="${OPENCHAT_HOME:-$HOME/.config/openchat}"
 ask(){
   [ "${OPENCHAT_ASSUME_YES:-0}" = "1" ] && return 0
-  if [ -r /dev/tty ]; then printf '%s [s/N] ' "$1" >/dev/tty; read a </dev/tty || a=""; case "$a" in s|S|si|SI|sí|y|Y) return 0 ;; esac; fi
+  if ( : </dev/tty ) 2>/dev/null; then printf '%s [s/N] ' "$1" >/dev/tty; read a </dev/tty || a=""; case "$a" in s|S|si|SI|sí|y|Y) return 0 ;; esac; fi
   return 1
 }
 cat <<TXT
