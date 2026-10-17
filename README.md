@@ -2,75 +2,89 @@
 
 ![Logo de OpenChat](app/logo.svg)
 
-Asistente de IA de escritorio para Linux y Windows. Permite elegir OpenRouter (nube) u Ollama (local); OpenChat no cambia de proveedor en silencio.
+Asistente de IA de escritorio para Linux y Windows. Incluye chat, modo automático entre OpenRouter y Ollama, recomendación de modelo local según el equipo y un puente opcional a Open Interpreter para tareas reales en el PC.
 
-## Incluye
-- Interfaz de chat de escritorio con icono propio.
-- Configuración de clave OpenRouter desde la app; la clave se guarda solo en el equipo.
-- Modelo en la nube: \`poolside/laguna-s-2.1:free\`.
-- IA local: Ollama con \`qwen2.5:1.5b\`.
-- Instaladores para Linux y Windows. Ollama y el modelo local son opcionales para no descargar gigabytes sin permiso.
-- Desinstalador de OpenChat. Ollama y su modelo se conservan al desinstalar la app.
-- No necesita GitHub Releases.
+## Funciones
 
-## Linux (CachyOS, Arch, Debian, Ubuntu, Fedora, openSUSE)
+- **Automático por defecto:** si hay una clave de OpenRouter, intenta usar la nube; si falla, indica el cambio y prueba Ollama local. Sin clave, intenta Ollama.
+- **Modelo local recomendado según hardware:** estima RAM y núcleos de CPU y recomienda `qwen2.5:0.5b`, `qwen2.5:1.5b` o `qwen2.5:3b`. No descarga modelos nuevos desde Ajustes sin que el usuario lo pida.
+- **Guía de API en la aplicación:** enlace directo para crear la clave, instrucciones para guardarla y comprobación antes de usarla.
+- **Agente de escritorio opcional:** el botón «Agente PC» abre una terminal con Open Interpreter y le pasa la tarea escrita en OpenChat.
+- Historial local, guardado de archivos con confirmación antes de sobrescribir y configuración privada en el perfil del usuario.
 
-Ejecuta:
+## Instalar en Linux
 
-    curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | sh
+Para instalar la aplicación de chat (sin descargar un modelo local):
 
-El instalador comprueba Python y Git, configura un entorno virtual, instala las dependencias de la interfaz, instala Ollama si falta, inicia el servicio e intenta descargar \`qwen2.5:1.5b\`. Necesitas conexión a Internet y espacio libre para el modelo; la instalación puede tardar.
+```sh
+curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | sh
+```
 
-Para desinstalar solo OpenChat:
+Para instalar también Ollama y descargar el modelo recomendado para el equipo:
 
-    ~/.local/bin/openchat-uninstall
+```sh
+curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | env OPENCHAT_INSTALL_OLLAMA=1 sh
+```
 
-Puedes conservar o borrar la clave y configuración. No elimina Ollama ni el modelo.
+El instalador elige un tamaño conservador de modelo según la RAM y el número de núcleos. La descarga de Ollama es opcional porque puede ocupar varios GB y consumir memoria.
 
-## Windows
+Para iniciar: `~/.local/bin/openchat`
+
+Para desinstalar solo OpenChat: `~/.local/bin/openchat-uninstall`. Ollama y sus modelos no se eliminan.
+
+## Instalar en Windows
 
 Abre PowerShell y ejecuta:
 
-    irm https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.ps1 | iex
+```powershell
+irm https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.ps1 | iex
+```
 
-El instalador usa winget para instalar Python, Git y Ollama si faltan; configura el entorno virtual e intenta descargar \`qwen2.5:1.5b\`.
+Por defecto instala OpenChat sin descargar un modelo local. Para incluir Ollama, define `OPENCHAT_INSTALL_OLLAMA=1` antes de ejecutar el instalador. El modelo recomendado se elige a partir de la RAM y los núcleos de CPU.
 
-Para desinstalar OpenChat, ejecuta \`Desinstalar OpenChat.cmd\` desde el Escritorio. Ollama y el modelo local se conservan.
+Los accesos directos `OpenChat.cmd` y `Desinstalar OpenChat.cmd` se crean en el Escritorio.
 
-## Primera ejecución
+## Crear y configurar una API de OpenRouter
 
-1. Abre OpenChat desde el menú de aplicaciones (Linux) o \`OpenChat.cmd\` (Windows).
-2. Para usar Laguna, crea una clave en https://openrouter.ai/settings/keys y añádela desde el botón de configuración.
-3. La IA local Ollama queda preparada durante la instalación y puede usarse sin clave.
-4. Para activar también Laguna en la nube, crea una clave de OpenRouter y añádela desde ⚙. La clave no se puede generar automáticamente y puede estar sujeta a límites o condiciones del proveedor.
-5. Al terminar la instalación, OpenChat se abre automáticamente.
+1. Abre [OpenRouter — Keys](https://openrouter.ai/settings/keys) e inicia sesión.
+2. Crea una clave nueva. Si el proveedor o el modelo tiene límites, revisa el saldo, los créditos y las condiciones mostradas por OpenRouter.
+3. Copia la clave completa y pégala en OpenChat → Ajustes. No la publiques, no la compartas y no la añadas a GitHub.
+4. Pulsa «Comprobar y guardar». OpenChat valida la clave antes de almacenarla.
+5. Deja **Automático** para preferir la nube y usar Ollama como alternativa, o selecciona **Nube** o **Local** para fijar el proveedor.
 
-La clave API no debe publicarse ni guardarse en el repositorio. Las conversaciones enviadas a OpenRouter salen hacia ese servicio; el modo Ollama usa el servicio local.
+La clave se guarda en `~/.config/openchat/openrouter.key` con permisos restringidos en Linux. Las peticiones en modo nube se envían a OpenRouter; las peticiones locales se hacen al servicio de Ollama en `127.0.0.1:11434`.
+
+## Agente de PC con Open Interpreter
+
+OpenChat no instala Open Interpreter automáticamente: es una dependencia opcional y puede tener requisitos propios. Si ya tienes un entorno compatible, el botón **⚡ Agente PC** puede usarlo. En Linux, OpenChat busca primero:
+
+- `~/.local/share/open-interpreter-classic-env/bin/python`
+- `~/.local/share/openchat-interpreter/bin/python`
+- el intérprete de Python con el que se ejecuta OpenChat
+
+Si no tienes uno, crea un entorno separado para evitar conflictos con las dependencias de OpenChat:
+
+```sh
+python3 -m venv ~/.local/share/openchat-interpreter
+~/.local/share/openchat-interpreter/bin/pip install open-interpreter
+```
+
+Cierra y vuelve a abrir OpenChat si acabas de instalarlo. Escribe una tarea concreta en «Agente PC»; se abrirá una terminal con Open Interpreter. **Revisa cada acción y aprueba solo el código que entiendas.** El modo automático de ejecución se mantiene desactivado: el agente puede leer y modificar archivos o ejecutar comandos únicamente mediante las herramientas y aprobaciones que permita Open Interpreter. Haz una copia de seguridad antes de pedir cambios importantes.
 
 ## Ejecutar desde el código
 
-    python -m pip install -r requirements.txt
-    python -m app.main
+```sh
+python -m pip install -r requirements.txt
+python -m app.main
+```
 
+Pruebas:
 
-## Funcionalidad y limitaciones
+```sh
+python -m unittest discover -s tests -v
+```
 
-- El asistente de configuración permite seleccionar nube o local y persiste el proveedor y el modelo elegidos.
-- La conversación usa el proveedor seleccionado sin fallback silencioso.
-- El guardado de archivos generados comprueba los nombres, evita sobrescrituras no autorizadas y verifica la escritura.
-- El historial persistente, el modo agente con herramientas, el streaming/cancelación y el actualizador transaccional todavía no están implementados como funciones completas. El botón de actualización comprueba el repositorio Git local y no instala automáticamente una actualización.
-
-## Pruebas automatizadas
-
-Desde la raíz del repositorio, con Python instalado, ejecuta:
-
-    python -m unittest discover -s tests -v
-
-Las pruebas añadidas cubren la validación de nombres de archivo, la escritura UTF-8, la protección frente a sobrescrituras accidentales y la sustitución explícita de archivos existentes. No sustituyen las pruebas de interfaz gráfica ni las pruebas reales contra OpenRouter u Ollama.
-
-## Guardado seguro de archivos
-
-Los archivos generados se guardan en la carpeta que elijas. OpenChat rechaza nombres que contengan rutas o nombres especiales, comprueba el contenido escrito y pide confirmación antes de sobrescribir archivos existentes. La ejecución de los archivos generados no es automática.
+Las pruebas actuales no sustituyen una comprobación manual de la interfaz ni pruebas reales con una clave de OpenRouter, Ollama y Open Interpreter.
 
 ## Licencia
 
