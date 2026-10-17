@@ -9,7 +9,7 @@ Asistente de IA de escritorio para Linux y Windows. Incluye chat, modo automáti
 - **Automático por defecto:** si hay una clave de OpenRouter, intenta usar la nube; si falla, indica el cambio y prueba Ollama local. Sin clave, intenta Ollama.
 - **Modelo local recomendado según hardware:** estima RAM y núcleos de CPU y recomienda `qwen2.5:0.5b`, `qwen2.5:1.5b` o `qwen2.5:3b`. No descarga modelos nuevos desde Ajustes sin que el usuario lo pida.
 - **Guía de API en la aplicación:** enlace directo para crear la clave, instrucciones para guardarla y comprobación antes de usarla.
-- **Agente de escritorio opcional:** el botón «Agente PC» abre una terminal con Open Interpreter y le pasa la tarea escrita en OpenChat.
+- **Creación de TXT asistida:** cuando pides explícitamente crear un archivo `.txt`, OpenChat inicia Open Interpreter automáticamente. No hay un botón de agente en la interfaz.
 - Historial local, guardado de archivos con confirmación antes de sobrescribir y configuración privada en el perfil del usuario.
 
 ## Instalar en Linux
@@ -54,9 +54,9 @@ Los accesos directos `OpenChat.cmd` y `Desinstalar OpenChat.cmd` se crean en el 
 
 La clave se guarda en `~/.config/openchat/openrouter.key` con permisos restringidos en Linux. Las peticiones en modo nube se envían a OpenRouter; las peticiones locales se hacen al servicio de Ollama en `127.0.0.1:11434`.
 
-## Agente de PC con Open Interpreter
+## Open Interpreter para crear archivos TXT
 
-OpenChat no instala Open Interpreter automáticamente: es una dependencia opcional y puede tener requisitos propios. Si ya tienes un entorno compatible, el botón **⚡ Agente PC** puede usarlo. En Linux, OpenChat busca primero:
+OpenChat no instala Open Interpreter automáticamente: es una dependencia opcional y puede tener requisitos propios. Cuando solicitas crear un archivo TXT, OpenChat lo inicia automáticamente si encuentra un entorno compatible. En Linux, OpenChat busca primero:
 
 - `~/.local/share/open-interpreter-classic-env/bin/python`
 - `~/.local/share/openchat-interpreter/bin/python`
@@ -69,7 +69,7 @@ python3 -m venv ~/.local/share/openchat-interpreter
 ~/.local/share/openchat-interpreter/bin/pip install open-interpreter
 ```
 
-Cierra y vuelve a abrir OpenChat si acabas de instalarlo. Escribe una tarea concreta en «Agente PC»; se abrirá una terminal con Open Interpreter. **Revisa cada acción y aprueba solo el código que entiendas.** El modo automático de ejecución se mantiene desactivado: el agente puede leer y modificar archivos o ejecutar comandos únicamente mediante las herramientas y aprobaciones que permita Open Interpreter. Haz una copia de seguridad antes de pedir cambios importantes.
+Cierra y vuelve a abrir OpenChat si acabas de instalarlo. Después pide en el chat que cree un archivo TXT; se abrirá una terminal con Open Interpreter para realizar esa tarea. **Revisa cada acción y aprueba solo el código que entiendas.** El modo automático de ejecución se mantiene desactivado: el agente puede leer y modificar archivos o ejecutar comandos únicamente mediante las herramientas y aprobaciones que permita Open Interpreter. Haz una copia de seguridad antes de pedir cambios importantes.
 
 
 ### Open Interpreter en Windows
@@ -82,7 +82,7 @@ py -3.12 -m venv "$env:USERPROFILE\.local\share\openchat-interpreter"
 & "$env:USERPROFILE\.local\share\openchat-interpreter\Scripts\python.exe" -m pip install open-interpreter
 ```
 
-Reinicia OpenChat y prueba el boton Agente PC con una tarea pequena. El lanzador de Windows esta implementado, pero aun necesita validacion manual en Windows real; no afirmamos que se haya probado alli. Mantiene desactivada la ejecucion automatica de Open Interpreter: revisa y aprueba cada accion.
+Reinicia OpenChat y pide en el chat que cree un archivo TXT sencillo. El lanzador de Windows esta implementado, pero aun necesita validacion manual en Windows real; no afirmamos que se haya probado alli. Mantiene desactivada la ejecucion automatica de Open Interpreter: revisa y aprueba cada accion.
 
 ## Ejecutar desde el código
 
