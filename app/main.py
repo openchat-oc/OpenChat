@@ -8,7 +8,7 @@ from PySide6.QtCore import QObject, Signal, QThread, Qt, QTimer, QPropertyAnimat
 from PySide6.QtGui import QIcon, QFont
 from PySide6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMessageBox, QPushButton, QScrollArea, QTextEdit, QVBoxLayout,
-    QWidget, QFileDialog, QProgressBar, QGraphicsOpacityEffect, QComboBox, QInputDialog)
+    QWidget, QFileDialog, QProgressBar, QGraphicsOpacityEffect, QComboBox)
 
 CONFIG = Path.home()/".config"/"openchat"
 KEYFILE = CONFIG/"openrouter.key"
@@ -412,19 +412,6 @@ Pon el nombre correcto con extensión, no omitas contenido ni uses puntos suspen
         if not path: return
         try: Path(path).write_text(self.last_answer,encoding="utf-8"); self.status.setText("Archivo guardado: "+Path(path).name)
         except OSError as e: QMessageBox.critical(self,"Error al guardar",str(e))
-    def launch_pc_agent(self):
-        suggested=self.input.toPlainText().strip()
-        task,ok=QInputDialog.getMultiLineText(
-            self,"Agente de escritorio · Open Interpreter",
-            "Describe la tarea que quieres que realice en este PC. Se abrirá una terminal y Open Interpreter pedirá aprobación antes de ejecutar código.",
-            suggested)
-        if not ok or not task.strip(): return
-        try:
-            launch_agent(task, self.key if self.mode in ("auto","cloud") else "", self.selected_model)
-            self.status.setText("Agente de escritorio abierto en una terminal · revisa y aprueba cada acción.")
-        except (OSError,RuntimeError,ValueError) as e:
-            QMessageBox.warning(self,"No se pudo abrir el agente",str(e))
-            self.status.setText("El agente no se ha iniciado.")
     def configure(self):
         d=SetupDialog(self.settings,self.key)
         if d.exec()==QDialog.DialogCode.Accepted:
