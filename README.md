@@ -14,19 +14,13 @@ Asistente de IA de escritorio para Linux y Windows. Incluye chat, modo automáti
 
 ## Instalar en Linux
 
-Para instalar la aplicación de chat (sin descargar un modelo local):
+Un único comando instala OpenChat, prepara Ollama, descarga un modelo local recomendado según la RAM y los núcleos de CPU e instala Open Interpreter para crear archivos TXT cuando lo pidas:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | sh
 ```
 
-Para instalar también Ollama y descargar el modelo recomendado para el equipo:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/openchat-oc/OpenChat/main/install.sh | env OPENCHAT_INSTALL_OLLAMA=1 sh
-```
-
-El instalador elige un tamaño conservador de modelo según la RAM y el número de núcleos. La descarga de Ollama es opcional porque puede ocupar varios GB y consumir memoria.
+La instalación de Ollama y Open Interpreter requiere conexión a Internet; Ollama descarga un modelo que puede ocupar alrededor de 1 GB o más.
 
 Para iniciar: `~/.local/bin/openchat`
 
