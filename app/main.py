@@ -214,7 +214,9 @@ class SetupDialog(QDialog):
                         selected_local=models[0]
                 except Exception:
                     pass
-            self.settings={"mode":mode,"model":model,"local_model":selected_local,"setup_complete":True}
+            cloud_model=model if mode!="local" else self.settings.get("model",MODEL)
+            if mode=="local": selected_local=model
+            self.settings={"mode":mode,"model":cloud_model,"local_model":selected_local,"setup_complete":True}
             save_settings(self.settings); self.accept()
         except requests.HTTPError as e:
             code=e.response.status_code if e.response is not None else "?"
