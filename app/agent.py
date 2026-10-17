@@ -14,6 +14,8 @@ def _python_with_interpreter() -> str | None:
     candidates = [
         Path.home() / ".local/share/open-interpreter-classic-env/bin/python",
         Path.home() / ".local/share/openchat-interpreter/bin/python",
+        Path.home() / ".local/share/open-interpreter-classic-env/Scripts/python.exe",
+        Path.home() / ".local/share/openchat-interpreter/Scripts/python.exe",
         Path(sys.executable),
     ]
     for candidate in candidates:
